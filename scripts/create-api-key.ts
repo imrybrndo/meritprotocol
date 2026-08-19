@@ -37,6 +37,7 @@ const KNOWN_SCOPES = [
   "decisions:write",
   "outcomes:write",
   "batches:write",
+  "corrections:write",
 ] as const;
 
 function usage(message: string): never {

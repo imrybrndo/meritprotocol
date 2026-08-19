@@ -61,3 +61,24 @@ export const EVENT_LABELS: Record<EventType, string> = {
   CORRECTION_RECORDED: "Correction recorded",
   VERIFICATION_REQUESTED: "Verification requested",
 };
+
+/**
+ * Record many events in one insert.
+ *
+ * `emitEvent` in a loop costs one round trip per event, which is fine for the
+ * handful a single write produces but not for a 256-leaf batch: 257 sequential
+ * inserts inside one transaction is the kind of thing that trips an
+ * interactive-transaction timeout and rolls back a perfectly good seal.
+ */
+export async function emitEvents(client: Client, inputs: EmitEventInput[]): Promise<void> {
+  if (inputs.length === 0) return;
+
+  await client.protocolEvent.createMany({
+    data: inputs.map((input) => ({
+      type: input.type,
+      agentId: input.agentId ?? null,
+      subjectId: input.subjectId ?? null,
+      payload: input.payload,
+    })),
+  });
+}

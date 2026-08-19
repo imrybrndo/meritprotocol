@@ -6,7 +6,21 @@ import { dmgFilename, getDesktopRelease } from "@/lib/desktop";
  * binary, so the rule it enforces is narrow and worth pinning: a button appears
  * only when the URL behind it can actually resolve off the deployment. Every
  * regression here ships a link that 404s in production and nowhere else.
+ *
+ * The rule tightened after a tag alone proved to be enough to render a button
+ * pointing at a release that did not exist. A location plus a checksum is the
+ * requirement now, so most of these cases set both.
  */
+
+/** A real digest shape; the value itself is never checked against a file here. */
+const SHA_ARM = "594fa5fb9ee5fa878d379c7eea3e6cbc7fd3c064fc913d86b7e0753ea70fba2c";
+const SHA_X64 = "c2b6caa5a05d21f6d404deb1137977d7ee13944f9d3d15161237ca5d49053f03";
+
+/** Both checksums set, which is the normal state of a published release. */
+function withChecksums(): void {
+  process.env.MERIT_DESKTOP_MAC_ARM64_SHA256 = SHA_ARM;
+  process.env.MERIT_DESKTOP_MAC_X64_SHA256 = SHA_X64;
+}
 
 const VARS = [
   "MERIT_DESKTOP_RELEASE_TAG",
@@ -51,8 +65,9 @@ describe("getDesktopRelease", () => {
     expect(release.notesUrl).toBeNull();
   });
 
-  it("derives both architecture URLs from a release tag alone", () => {
+  it("derives both architecture URLs from a release tag", () => {
     process.env.MERIT_DESKTOP_RELEASE_TAG = "v0.1.0";
+    withChecksums();
 
     const release = getDesktopRelease();
     expect(release.available).toBe(true);
@@ -71,6 +86,7 @@ describe("getDesktopRelease", () => {
   it("derives against a repository override", () => {
     process.env.MERIT_DESKTOP_RELEASE_TAG = "v2.0.0";
     process.env.MERIT_DESKTOP_RELEASE_REPO = "acme/console";
+    withChecksums();
 
     expect(arm64().url).toBe(
       "https://github.com/acme/console/releases/download/v2.0.0/MERIT-2.0.0-arm64.dmg",
@@ -87,6 +103,7 @@ describe("getDesktopRelease", () => {
   it("lets an explicit URL override the derived one, per architecture", () => {
     process.env.MERIT_DESKTOP_RELEASE_TAG = "v0.1.0";
     process.env.MERIT_DESKTOP_MAC_X64_URL = "https://cdn.example.com/intel.dmg";
+    withChecksums();
 
     expect(arm64().url).toContain("github.com/imrybrndo/meritprotocol");
     expect(x64().url).toBe("https://cdn.example.com/intel.dmg");
@@ -94,11 +111,49 @@ describe("getDesktopRelease", () => {
 
   it("publishes on an explicit URL with no tag configured", () => {
     process.env.MERIT_DESKTOP_MAC_ARM64_URL = "https://cdn.example.com/a.dmg";
+    process.env.MERIT_DESKTOP_MAC_ARM64_SHA256 = SHA_ARM;
 
     const release = getDesktopRelease();
     expect(release.available).toBe(true);
     expect(arm64().url).toBe("https://cdn.example.com/a.dmg");
     expect(x64().url).toBeNull();
+  });
+
+  /**
+   * The regression this rule was added for. A tag was set to `v0.1.0`, no such
+   * release existed, and the site rendered two working-looking buttons onto a
+   * 404. Configuration is intent; a digest is evidence.
+   */
+  it("refuses a tag with no checksum, however plausible the tag looks", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    process.env.MERIT_DESKTOP_RELEASE_TAG = "v0.1.0";
+
+    const release = getDesktopRelease();
+    expect(release.available).toBe(false);
+    expect(arm64().url).toBeNull();
+    expect(x64().url).toBeNull();
+  });
+
+  it("offers only the architecture whose checksum is present", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    process.env.MERIT_DESKTOP_RELEASE_TAG = "v0.1.0";
+    process.env.MERIT_DESKTOP_MAC_ARM64_SHA256 = SHA_ARM;
+
+    const release = getDesktopRelease();
+    expect(release.available).toBe(true);
+    expect(arm64().url).not.toBeNull();
+    expect(x64().url).toBeNull();
+  });
+
+  it("still reports the release notes for an unpublished tag", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    process.env.MERIT_DESKTOP_RELEASE_TAG = "v0.1.0";
+
+    // The notes link is not a download, so withholding it would hide the
+    // release page from someone who wants to build from source.
+    expect(getDesktopRelease().notesUrl).toBe(
+      "https://github.com/imrybrndo/meritprotocol/releases/tag/v0.1.0",
+    );
   });
 
   it("refuses a site-relative path, which cannot resolve in production", () => {
@@ -113,6 +168,7 @@ describe("getDesktopRelease", () => {
   it("prefers an explicit version over the one carried by the tag", () => {
     process.env.MERIT_DESKTOP_RELEASE_TAG = "release-candidate";
     process.env.MERIT_DESKTOP_VERSION = "0.2.0";
+    withChecksums();
 
     const release = getDesktopRelease();
     expect(release.version).toBe("0.2.0");

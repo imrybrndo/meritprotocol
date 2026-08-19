@@ -21,6 +21,16 @@
  *     derived one, so a single re-uploaded architecture can be redirected
  *     without disturbing the other.
  *
+ * A configured location is not the same as a published file, so a build only
+ * counts as available when its **checksum** is also set. The tag alone was not
+ * enough: it is a string an operator types, and typing it rendered a working
+ * download button whether or not the release existed — which is how this
+ * project shipped a button pointing at a 404. A checksum cannot be typed from
+ * intent. Producing one means holding the artefact and hashing it, which is the
+ * strongest evidence available without a network call at build time. It is not
+ * proof the file was uploaded; `npm run desktop:check` is, and it is worth
+ * running before a deploy.
+ *
  * Either way the artefact is hosted off the deployment. Site-relative paths are
  * rejected on purpose, and the reason is a failure that already happened:
  * `/downloads/x.dmg` looks configured, renders a button, and then 404s in
@@ -128,29 +138,71 @@ function resolveVersion(tag: string | null): string {
   return "0.1.0";
 }
 
+/**
+ * The URL a build would be served from, published or not.
+ *
+ * Exported for `scripts/check-desktop-release.ts`, which is the only thing that
+ * can settle whether the file is actually there.
+ */
+export function candidateUrl(arch: MacArch): string | null {
+  const tag = env("MERIT_DESKTOP_RELEASE_TAG");
+  const explicit = artefactUrl(
+    arch === "arm64" ? "MERIT_DESKTOP_MAC_ARM64_URL" : "MERIT_DESKTOP_MAC_X64_URL",
+  );
+  if (explicit) return explicit;
+  return tag ? releaseAssetUrl(tag, resolveVersion(tag), arch) : null;
+}
+
+let unverifiedWarned = false;
+
+/**
+ * Withhold a download that nobody can check.
+ *
+ * Returning null here is what turns the button into "Not published" rather than
+ * into a link nobody has verified.
+ */
+function publishedUrl(arch: MacArch, sha256: string | null): string | null {
+  const url = candidateUrl(arch);
+  if (!url) return null;
+  if (sha256) return url;
+
+  if (!unverifiedWarned) {
+    unverifiedWarned = true;
+    console.warn(
+      `[desktop] A ${arch} artefact location is configured but its SHA-256 is not. ` +
+        "A download nobody can check against a published digest is not offered — " +
+        "set MERIT_DESKTOP_MAC_" +
+        arch.toUpperCase() +
+        "_SHA256 to the output of `shasum -a 256` on the file you uploaded. " +
+        "Treating it as unpublished.",
+    );
+  }
+  return null;
+}
+
 export function getDesktopRelease(): DesktopRelease {
   const tag = env("MERIT_DESKTOP_RELEASE_TAG");
   const version = resolveVersion(tag);
 
-  const url = (name: string, arch: MacArch): string | null =>
-    artefactUrl(name) ?? (tag ? releaseAssetUrl(tag, version, arch) : null);
+  const armSha = env("MERIT_DESKTOP_MAC_ARM64_SHA256");
+  const x64Sha = env("MERIT_DESKTOP_MAC_X64_SHA256");
 
   const builds: DesktopBuild[] = [
     {
       arch: "arm64",
       label: "Apple Silicon",
       hardware: "M1 and later",
-      url: url("MERIT_DESKTOP_MAC_ARM64_URL", "arm64"),
+      url: publishedUrl("arm64", armSha),
       size: env("MERIT_DESKTOP_MAC_ARM64_SIZE"),
-      sha256: env("MERIT_DESKTOP_MAC_ARM64_SHA256"),
+      sha256: armSha,
     },
     {
       arch: "x64",
       label: "Intel",
       hardware: "x86-64 Macs",
-      url: url("MERIT_DESKTOP_MAC_X64_URL", "x64"),
+      url: publishedUrl("x64", x64Sha),
       size: env("MERIT_DESKTOP_MAC_X64_SIZE"),
-      sha256: env("MERIT_DESKTOP_MAC_X64_SHA256"),
+      sha256: x64Sha,
     },
   ];
 

@@ -14,6 +14,10 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Prisma emits the client here; it is generated, not authored.
     "lib/generated/**",
+    // Same reasoning: electron-builder output, not source. Linting it was
+    // failing `npm run verify` on code nobody wrote.
+    "desktop/dist/**",
+    "desktop/release/**",
   ]),
 ]);
 

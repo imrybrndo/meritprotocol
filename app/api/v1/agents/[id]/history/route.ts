@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { apiError, clientIdentifier, ok, rateLimit, toErrorResponse, tooManyRequests } from "@/lib/api/http";
+import { countCorrections } from "@/lib/services/corrections";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,10 @@ export const runtime = "nodejs";
  *
  * There is no filter that removes losses. `status` may narrow the view, but the
  * unfiltered default is the complete record, wins and losses alike.
+ *
+ * Each row carries its correction count. An amended decision has to be visible
+ * as amended from the same read that returns it — a correction filed where the
+ * history does not show it would be a private edit with extra steps.
  */
 export async function GET(
   request: NextRequest,
@@ -70,6 +75,8 @@ export async function GET(
       }),
     ]);
 
+    const corrections = await countCorrections(prisma, decisions.map((d) => d.id));
+
     return ok({
       agent,
       total,
@@ -85,6 +92,7 @@ export async function GET(
         decidedAt: decision.decidedAt.toISOString(),
         committedAt: decision.committedAt.toISOString(),
         isDemo: decision.isDemo,
+        corrections: corrections.get(decision.id) ?? 0,
         strategyVersion: decision.strategyVersion.version,
         model: decision.strategyVersion.model,
         modelVersion: decision.strategyVersion.modelVersion,

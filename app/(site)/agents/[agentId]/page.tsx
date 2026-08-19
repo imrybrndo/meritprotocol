@@ -19,8 +19,7 @@ import { DbNotice } from "@/components/merit/db-notice";
 import { getPrisma } from "@/lib/db";
 import { safeQuery } from "@/lib/services/queries";
 import { TIER_REQUIREMENTS, qualify } from "@/lib/qualification/tiers";
-import { computeMetrics, type SettledTrade } from "@/lib/reputation/metrics";
-import { computeReputation } from "@/lib/reputation/engine";
+import { AGENT_PICTURE_SELECT, derivePicture } from "@/lib/services/agent-picture";
 import {
   formatDate,
   formatDateTime,
@@ -54,7 +53,14 @@ async function loadProfile(agentId: string) {
   });
   if (!agent) return null;
 
-  const [decisions, events, latestBatch] = await Promise.all([
+  const [record, decisions, events, latestBatch] = await Promise.all([
+    // The score is derived from the complete record. The table below shows the
+    // most recent 400, but deriving from that slice would put a different score
+    // on this page than the leaderboard shows for the same agent.
+    prisma.decision.findMany({
+      where: { agentId: agent.id },
+      ...AGENT_PICTURE_SELECT,
+    }),
     prisma.decision.findMany({
       where: { agentId: agent.id },
       orderBy: { decidedAt: "desc" },
@@ -77,7 +83,7 @@ async function loadProfile(agentId: string) {
     }),
   ]);
 
-  return { agent, decisions, events, latestBatch };
+  return { agent, record, decisions, events, latestBatch };
 }
 
 export default async function AgentProfilePage({
@@ -95,48 +101,17 @@ export default async function AgentProfilePage({
   }
   if (!data) notFound();
 
-  const { agent, decisions, events, latestBatch } = data;
+  const { agent, record, decisions, events, latestBatch } = data;
 
-  const trades: SettledTrade[] = decisions
-    .filter((d) => d.outcome !== null)
-    .map((d) => ({
-      netPnl: Number(d.outcome!.realizedPnl),
-      notional: Number(d.outcome!.notional),
-      roi: Number(d.outcome!.roi),
-      openedAt: d.committedAt,
-      settledAt: d.outcome!.settledAt,
-    }));
-
-  const metrics = computeMetrics(trades);
-  const proven = decisions.filter((d) => d.proof !== null).length;
-  const proofCoverage = decisions.length === 0 ? 0 : proven / decisions.length;
-  const times = decisions.map((d) => d.decidedAt.getTime());
-  const operatingDays =
-    times.length < 2 ? 0 : Math.round((Math.max(...times) - Math.min(...times)) / 86_400_000);
-
-  const reputation = computeReputation({
+  const {
     metrics,
-    execution: {
-      averageSlippage: 0.0009,
-      averageFeeRate: 0.001,
-      fillRate: decisions.length === 0 ? 0 : proven / decisions.length,
-    },
-    integrity: {
-      proofCoverage,
-      outcomeVerificationRate: trades.length === 0 ? 0 : 1,
-      anchorRate: proofCoverage,
-      integrityFailures: 0,
-    },
-    operatingDays,
-  });
-
-  const qualification = qualify({
-    verifiedDecisions: proven,
-    operatingDays,
-    proofCoverage,
     reputation,
-    metrics,
-  });
+    qualification,
+    proofCoverage,
+    provenCount: proven,
+    operatingDays,
+    trades,
+  } = derivePicture(record);
 
   const failures = decisions.filter((d) =>
     ["LOSS", "EXPIRED", "CANCELLED", "NO_GO", "TRADE_ABSTENTION"].includes(d.status),

@@ -37,8 +37,8 @@ work. Without one the app still boots: every page renders with an explicit
 
 ```bash
 npm run verify        # typecheck + lint + unit tests
-npm test              # 95 unit tests
-DATABASE_URL=… npm test   # additionally runs the 10 integration tests
+npm test              # 128 unit tests
+DATABASE_URL=… npm test   # additionally runs the 18 integration tests
 ```
 
 ---
@@ -72,6 +72,39 @@ public RPC endpoint with no MERIT involvement.
 
 ---
 
+## Sealing
+
+A commitment is only anchored once it lands in a batch, so the schedule that
+seals batches is part of the protocol rather than an operational detail. Two
+conditions trigger a seal, whichever comes first:
+
+| Trigger | Variable | Default | Why |
+| --- | --- | --- | --- |
+| Backlog size | `MERIT_SEAL_MIN_BATCH` | 32 | One anchor transaction covers the whole batch, so larger batches are cheaper per commitment. |
+| Commitment age | `MERIT_SEAL_MAX_AGE_MINUTES` | 60 | Without it, a single decision in a quiet week stays unproven indefinitely. |
+
+`vercel.ts` runs `/api/cron/seal` every ten minutes. That is how often the
+question is asked; the thresholds above decide the answer, and most runs
+correctly do nothing. To seal less often, raise the thresholds rather than
+slowing the schedule — the interval sets the accuracy of the age trigger.
+
+Both scheduled routes require `Authorization: Bearer $CRON_SECRET`. With no
+secret set they refuse to run in production rather than leaving an endpoint open
+that seals batches and pays for anchor transactions.
+
+```bash
+# what a run would do, without doing it
+curl -H "Authorization: Bearer $CRON_SECRET" https://…/api/cron/seal
+```
+
+Sealing is safe to run concurrently. The pending set is claimed inside the
+transaction with `FOR UPDATE SKIP LOCKED`, so the scheduler and a manual
+`POST /api/v1/batches` take disjoint sets rather than racing for the same
+commitments. `npm run anchor:pending` remains the way to re-anchor batches
+sealed while no keypair was configured.
+
+---
+
 ## Architecture
 
 ```
@@ -79,13 +112,14 @@ lib/crypto/       canonical encoding, commitments, Merkle tree   (pure, no I/O)
 lib/anchor/       AnchorService interface + Local and Solana adapters
 lib/reputation/   metrics and the scoring engine                 (pure, no I/O)
 lib/qualification tier requirements
-lib/services/     decision, batching, verification, read models
-lib/api/          auth, rate limiting, HTTP envelopes
+lib/services/     decision, batching, corrections, reputation, verification, reads
+lib/api/          auth, rate limiting, scheduler auth, HTTP envelopes
 app/(site)/       landing, marketplace, profiles, verify, leaderboard, dashboard, docs
-app/api/v1/       19 endpoints
+app/api/v1/       20 endpoints
+app/api/cron/     the scheduled seal and reputation runs
 packages/sdk/     @merit-protocol/sdk, including local proof verification
 prisma/           16 models, 62 indexes, seed script
-tests/            105 tests
+tests/            128 tests
 ```
 
 The cryptographic and scoring modules are pure functions with no database
@@ -96,8 +130,29 @@ Merkle code run in a browser on `/verify`.
 
 Decisions, outcomes, proofs, batches and anchors are written once. There is no
 update path for a committed field and **no delete path for a decision** —
-hiding a loss is the precise failure this protocol exists to prevent. Genuine
-corrections are new `Correction` rows referencing the original.
+hiding a loss is the precise failure this protocol exists to prevent.
+
+Genuine corrections go through `POST /api/v1/corrections`, which is deliberately
+not an edit. The original decision, its commitment and its outcome are untouched
+and still verify; the correction is a new row pointing at them, timestamped
+after the fact and public at `GET /api/v1/corrections?decisionId=…`. Every row
+in an agent's history carries its correction count, so an amended record reads
+as amended from the same request that returns it. A decision accepts at most
+five, because an unbounded amendment channel would let a record be rewritten by
+burial.
+
+Reputation is recorded the same way. Scores used to be derived per request and
+never stored, which left the protocol with no memory of its own judgements — no
+score from before a drawdown, no timestamp on a promotion. `/api/cron/reputation`
+now writes a `ReputationScore` and a `Qualification` row whenever an agent's
+score or tier actually moves, and never when it has not, so the table holds
+transitions rather than a row per agent per hour. Read it from
+`GET /api/v1/reputation/:agentId?history=1`.
+
+Both the profile and the stored history come from one derivation in
+`lib/services/agent-picture.ts`, and a test fails the build if any other module
+computes a score itself. A protocol arguing that its numbers are re-derivable
+cannot publish one figure and store another.
 
 ---
 
@@ -186,6 +241,32 @@ await agent.recordOutcome({
 
 Commitments are sealed server-side on purpose: a digest the agent generated
 itself proves nothing to a third party.
+
+---
+
+## Desktop build
+
+The macOS console is packaged separately and hosted off the deployment — disk
+images are excluded from both Git and the Vercel build, so a site-relative path
+could only ever resolve on the developer's machine.
+
+Publishing one is three steps: build it, upload the artefacts as GitHub release
+assets under a tag, then set `MERIT_DESKTOP_RELEASE_TAG` **and** the per-arch
+`…_SHA256` variables. The checksum is not decoration — a build without one is
+rendered as "Not published", because a tag is a string somebody typed and a
+digest is evidence they held the file.
+
+Even that is only evidence, not proof, so the last step is to ask the host:
+
+```bash
+npm run desktop:check              # is each configured artefact reachable?
+npm run desktop:check -- --checksum  # download and confirm it is the right file
+```
+
+It exits non-zero when the site would offer a download that 404s, which makes it
+usable as a release gate. The landing page is statically rendered, so redeploy
+after changing any of these variables — they are read at build time, not when a
+visitor arrives.
 
 ---
 

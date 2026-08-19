@@ -20,6 +20,7 @@
     "db:reset": "prisma migrate reset --force",
     "anchor:pending": "tsx scripts/anchor-pending.ts",
     "key:create": "tsx scripts/create-api-key.ts",
+    "desktop:check": "dotenv -e .env -- tsx scripts/check-desktop-release.ts",
     "verify": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
@@ -45,6 +46,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vercel/config": "^0.6.1",
     "@vitest/coverage-v8": "^4.1.10",
     "dotenv-cli": "^11.0.0",
     "electron-builder": "^26.15.3",

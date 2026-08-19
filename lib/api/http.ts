@@ -7,6 +7,7 @@ import { ZodError, type ZodType } from "zod";
 import { DatabaseNotConfiguredError } from "../db";
 import { ProtocolError } from "../services/decisions";
 import { ForbiddenError, UnauthorizedError } from "./auth";
+import { CronAuthError } from "./cron";
 import { consume, type RateLimitResult } from "./rate-limit";
 
 export interface ApiErrorBody {
@@ -52,6 +53,9 @@ export function toErrorResponse(error: unknown): NextResponse {
   }
   if (error instanceof DatabaseNotConfiguredError) {
     return apiError("DATABASE_UNAVAILABLE", error.message, 503);
+  }
+  if (error instanceof CronAuthError) {
+    return apiError(error.code, error.message, error.status);
   }
 
   console.error("[api] unhandled error", error);

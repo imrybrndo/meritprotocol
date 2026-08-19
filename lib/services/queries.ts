@@ -8,9 +8,8 @@
  */
 
 import { getPrisma, isDatabaseConfigured } from "../db";
-import { computeMetrics, type SettledTrade } from "../reputation/metrics";
-import { computeReputation, type ReputationResult } from "../reputation/engine";
-import { qualify, type QualificationResult } from "../qualification/tiers";
+import type { ReputationResult } from "../reputation/engine";
+import { AGENT_PICTURE_SELECT, derivePicture } from "./agent-picture";
 
 export interface DbState {
   connected: boolean;
@@ -90,73 +89,13 @@ export async function buildAgentSummaries(limit = 100): Promise<AgentSummary[]> 
         take: 1,
         include: { versions: { orderBy: { createdAt: "desc" }, take: 1 } },
       },
-      decisions: {
-        select: {
-          id: true,
-          committedAt: true,
-          decidedAt: true,
-          proof: { select: { id: true } },
-          outcome: {
-            select: {
-              realizedPnl: true,
-              roi: true,
-              notional: true,
-              settledAt: true,
-            },
-          },
-        },
-      },
+      decisions: AGENT_PICTURE_SELECT,
     },
   });
 
   return agents.map((agent) => {
-    const trades: SettledTrade[] = agent.decisions
-      .filter((d) => d.outcome !== null)
-      .map((d) => ({
-        netPnl: Number(d.outcome!.realizedPnl),
-        notional: Number(d.outcome!.notional),
-        roi: Number(d.outcome!.roi),
-        openedAt: d.committedAt,
-        settledAt: d.outcome!.settledAt,
-      }));
-
-    const metrics = computeMetrics(trades);
-    const decisionCount = agent.decisions.length;
-    const provenCount = agent.decisions.filter((d) => d.proof !== null).length;
-    const proofCoverage = decisionCount === 0 ? 0 : provenCount / decisionCount;
-
-    const timestamps = agent.decisions.map((d) => d.decidedAt.getTime());
-    const operatingDays =
-      timestamps.length < 2
-        ? 0
-        : Math.round(
-            (Math.max(...timestamps) - Math.min(...timestamps)) / 86_400_000,
-          );
-
-    const reputation = computeReputation({
-      metrics,
-      // Execution inputs come from the recorded fills, not from self-reports.
-      execution: {
-        averageSlippage: 0.0009,
-        averageFeeRate: 0.001,
-        fillRate: decisionCount === 0 ? 0 : provenCount / decisionCount,
-      },
-      integrity: {
-        proofCoverage,
-        outcomeVerificationRate: trades.length === 0 ? 0 : 1,
-        anchorRate: proofCoverage,
-        integrityFailures: 0,
-      },
-      operatingDays,
-    });
-
-    const qualification: QualificationResult = qualify({
-      verifiedDecisions: provenCount,
-      operatingDays,
-      proofCoverage,
-      reputation,
-      metrics,
-    });
+    const picture = derivePicture(agent.decisions);
+    const { metrics, reputation, qualification, provenCount, proofCoverage } = picture;
 
     const strategy = agent.strategies[0];
     const version = strategy?.versions[0];

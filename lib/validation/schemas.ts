@@ -121,6 +121,13 @@ export const createOutcomeSchema = z.object({
   settledAt: z.iso.datetime().optional(),
 });
 
+export const createCorrectionSchema = z.object({
+  decisionId: z.string().min(1),
+  /// Free text, but bounded: a correction is an annotation, not a second record.
+  reason: z.string().min(8).max(500),
+  detail: z.record(z.string(), z.unknown()).optional(),
+});
+
 export const verifySchema = z.object({
   query: z.string().min(3).max(200),
   type: z.enum(["auto", "decision", "commitment", "agent", "transaction"]).default("auto"),
@@ -158,4 +165,5 @@ export type CreateOutcomeInput = z.infer<typeof createOutcomeSchema>;
  * so internal callers do not have to restate zero fees and zero slippage.
  */
 export type CreateOutcomeArgs = z.input<typeof createOutcomeSchema>;
+export type CreateCorrectionInput = z.infer<typeof createCorrectionSchema>;
 export type ListAgentsInput = z.infer<typeof listAgentsSchema>;
