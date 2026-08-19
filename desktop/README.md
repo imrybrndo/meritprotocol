@@ -66,9 +66,15 @@ npm run dist:mac          # both architectures
 npm run dist:mac:arm64    # Apple Silicon only
 ```
 
-electron-builder writes `release/MERIT-Console-<version>-<arch>.dmg`. The
-bundle is what esbuild already produced — `dist/**` and `package.json`, nothing
-from `node_modules`, because every dependency is inlined at build time.
+electron-builder writes `release/MERIT-<version>-<arch>.dmg` — the
+`artifactName` pattern in `package.json`. The bundle is what esbuild already
+produced — `dist/**` and `package.json`, nothing from `node_modules`, because
+every dependency is inlined at build time.
+
+That name matters beyond the local file: the landing page derives its download
+URLs from the same pattern (`dmgFilename` in `lib/desktop.ts`). Change
+`artifactName` and you must change that function too, or the site will render a
+button that 404s.
 
 Signing is not configured here on purpose. With no Developer ID in the keychain
 the image still builds and still installs, but Gatekeeper will quarantine it on
@@ -77,10 +83,49 @@ notarised one, set `CSC_LINK`/`CSC_KEY_PASSWORD` and the notarisation
 credentials in the environment — `hardenedRuntime` is already on, which
 notarisation requires.
 
-The landing page reads the published URLs from the environment
-(`MERIT_DESKTOP_MAC_ARM64_URL` and friends, see `.env.example`) and shows the
-build-from-source instructions until they are set, rather than linking a disk
-image that does not exist.
+## Publishing the build
+
+A `.dmg` is ~125 MB per architecture. It is not committed (`desktop/.gitignore`
+excludes `release/`) and not deployed (`.vercelignore` excludes `desktop/` and
+`public/downloads/`), because a quarter-gigabyte of binaries has no business in
+a Git history or in a web deployment — and Vercel would reject them anyway.
+They are hosted as release assets instead.
+
+```bash
+# from the repository root, after `npm run dist:mac`
+gh release create v0.1.0 \
+  desktop/release/MERIT-0.1.0-arm64.dmg \
+  desktop/release/MERIT-0.1.0-x64.dmg \
+  --title "MERIT Console 0.1.0" \
+  --notes "Unsigned macOS build. See the download section for the checksums."
+```
+
+Then set `MERIT_DESKTOP_RELEASE_TAG=v0.1.0` in the deployment environment. Both
+architecture URLs are derived from the tag and the `artifactName` pattern, so
+that single variable is what turns the download section on; the per-architecture
+`MERIT_DESKTOP_MAC_*_URL` overrides exist for assets hosted elsewhere. Publish
+the checksums alongside them —
+
+```bash
+shasum -a 256 desktop/release/*.dmg
+```
+
+— into `MERIT_DESKTOP_MAC_ARM64_SHA256` and its x64 twin. Without them the site
+still offers the download; with them a visitor can check what they got against
+what was published, which is the whole argument this project makes about
+everything else.
+
+Until a tag is configured the landing page refuses to render a button at all
+and shows the build-from-source instructions instead, rather than linking a disk
+image that does not exist. One deployment gotcha: the landing page is statically
+rendered, so these variables are read at build time. Setting them in the Vercel
+dashboard does nothing until you redeploy.
+
+Because the build is unsigned, macOS will refuse it on first open with "cannot
+be opened because the developer cannot be verified". Right-click the app and
+choose Open, or `xattr -dr com.apple.quarantine /Applications/MERIT.app`. That
+friction is the accurate signal for an unsigned artefact, and it goes away only
+with a Developer ID and notarisation.
 
 ## Panels
 

@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the template. It holds no secrets, and README tells you to copy
+# it — without this line the file is silently untracked and that step fails.
+!.env.example
 
 # solana keypairs — signing keys, never commit
 merit-anchor.json

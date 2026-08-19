@@ -132,6 +132,34 @@ export function DesktopDownload() {
                       ) : null}
                     </div>
                   ))}
+
+                  {/*
+                    The build is not signed with a Developer ID, so Gatekeeper
+                    refuses it on first open. Saying so here costs a visitor
+                    nothing; discovering it after a 125 MB download, from an
+                    error that reads like the file is corrupt, costs them the
+                    install. The honest note is also the useful one.
+                  */}
+                  <div className="px-4 py-3">
+                    <p className="text-2xs leading-relaxed text-ink-dim">
+                      This build is unsigned. macOS will refuse the first open
+                      with{" "}
+                      <span className="text-ink-muted">
+                        &ldquo;cannot be opened because the developer cannot be
+                        verified&rdquo;
+                      </span>
+                      . Right-click the app and choose Open, or clear the
+                      quarantine flag:
+                    </p>
+                    <pre className="mt-2 overflow-x-auto border border-line bg-base p-2.5 font-mono text-2xs leading-relaxed text-ink-muted">
+                      <code>xattr -dr com.apple.quarantine /Applications/MERIT.app</code>
+                    </pre>
+                    <p className="mt-2 text-2xs leading-relaxed text-ink-faint">
+                      Check the download against the checksum above before you
+                      do — that is the only thing distinguishing this file from
+                      any other one claiming to be it.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="px-4 py-4">
