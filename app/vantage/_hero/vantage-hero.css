@@ -1,0 +1,871 @@
+/* Brand typefaces for the Vantage composition. Drop the variable font files
+   into public/fonts/ to get the real faces; until then the local() source and
+   the Arial fallback in each family stack keep the layout sane. */
+@font-face {
+  font-family: "Reference Sans";
+  src:
+    local("Reference Sans"),
+    url("/fonts/ReferenceSans-Variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Reference Display";
+  src:
+    local("Reference Display"),
+    url("/fonts/ReferenceDisplay-Variable.woff2") format("woff2-variations");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The composition owns the whole viewport and never scrolls. The lock class is
+   applied by app/vantage/layout.tsx only while this route is mounted, so the
+   rest of the app keeps its normal document flow. */
+html.vantage-lock,
+html.vantage-lock body {
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+html.vantage-lock body {
+  color: #fff;
+  font-family: "Reference Sans", Arial, sans-serif;
+  line-height: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   Vantage hero — full-viewport cinematic landing composition.
+   One screen: background video, top bar, bottom-left hero stack,
+   bottom-right glass demo card. Nothing scrolls.
+   ========================================================================== */
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  isolation: isolate;
+  background: #000;
+}
+
+.screen {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+
+  --gutter-start: clamp(36px, 4.177vw, 96px);
+  --gutter-end: clamp(36px, 4.04vw, 96px);
+  --header-top: clamp(20px, 2.264vh, 30px);
+  --hero-bottom: clamp(34px, 5.19vh, 64px);
+  --display-size: clamp(58px, 7.64vh, 88px);
+  --display-leading: clamp(72px, 9.34vh, 106px);
+  --copy-size: clamp(14px, 1.7vh, 19px);
+  --copy-leading: clamp(19px, 2.17vh, 24px);
+  --title-copy-gap: clamp(15px, 2.08vh, 24px);
+  --copy-cta-gap: clamp(24px, 3.11vh, 36px);
+  --cta-width: clamp(142px, 15.09vh, 168px);
+  --cta-height: clamp(38px, 3.96vh, 44px);
+  --compact-control-font-size: clamp(17px, 1.75vh, 19px);
+  --action-control-font-size: clamp(17px, 1.78vh, 19.5px);
+  --primary-control-font-size: clamp(17px, 1.77vh, 19.25px);
+  --control-inline-nudge: -1px;
+  --control-baseline-shift: clamp(1px, 0.19vh, 2px);
+  --copy-optical-shift: clamp(0px, 0.1vh, 1px);
+  --watch-baseline-shift: clamp(2px, 0.38vh, 4px);
+  --card-width: clamp(150px, 18.96vh, 215px);
+}
+
+/* Full-bleed background video ---------------------------------------------- */
+
+.background {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.03),
+      transparent 24%,
+      transparent 82%,
+      rgba(0, 0, 0, 0.05)
+    ),
+    radial-gradient(ellipse at 44% 54%, transparent 30%, rgba(0, 0, 0, 0.055) 100%);
+}
+
+/* Header ------------------------------------------------------------------- */
+
+.header {
+  position: absolute;
+  inset: var(--header-top) var(--gutter-end) auto var(--gutter-start);
+  height: 48px;
+  display: flex;
+  align-items: flex-start;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+.brand {
+  position: relative;
+  top: 10px;
+  display: block;
+  flex: none;
+  line-height: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.header-actions {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+
+.nav {
+  position: relative;
+  top: 9px;
+  display: flex;
+  margin-left: clamp(36px, 3.03vw, 48px);
+  gap: clamp(32px, 2.9vw, 43px);
+}
+
+.nav a {
+  position: relative;
+  font-size: 16px;
+  font-weight: 430;
+  letter-spacing: -0.36px;
+  color: rgba(229, 229, 230, 0.77);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  text-decoration: none;
+}
+
+.nav a:nth-child(1) {
+  top: -3px;
+}
+
+.nav a:nth-child(4) {
+  margin-left: 1px;
+}
+
+.nav a.active {
+  color: #fff;
+}
+
+.nav a.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -8px;
+  width: 44px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.time-panel {
+  margin-left: auto;
+  width: 211px;
+  height: 48px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(230, 230, 230, 0.52);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.time-panel .label {
+  font-size: 15px;
+  font-weight: 420;
+  letter-spacing: -0.1px;
+  color: rgba(240, 240, 240, 0.77);
+}
+
+.time-panel .value {
+  font-size: 15px;
+  font-weight: 440;
+  letter-spacing: -0.1px;
+  color: rgba(255, 255, 255, 0.93);
+}
+
+.sign-up {
+  flex: none;
+  width: 109px;
+  height: 42px;
+  margin-left: clamp(20px, 1.95vw, 29px);
+  border: 0;
+  border-radius: 7px;
+  background: #fff;
+  color: #101010;
+  font-family: inherit;
+  font-size: var(--action-control-font-size);
+  font-weight: 460;
+  letter-spacing: -0.34px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 1px 5px rgba(0, 0, 0, 0.34);
+  cursor: pointer;
+}
+
+.sign-up span {
+  display: inline-block;
+  transform: translate(var(--control-inline-nudge), var(--control-baseline-shift));
+}
+
+.menu-toggle {
+  display: none;
+  flex: none;
+  margin-left: auto;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 11px;
+  background: linear-gradient(145deg, rgba(26, 34, 36, 0.82), rgba(12, 22, 26, 0.88));
+  backdrop-filter: blur(14px) saturate(108%);
+  -webkit-backdrop-filter: blur(14px) saturate(108%);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.44),
+    0 0 0 1px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  cursor: pointer;
+}
+
+.menu-toggle .bar {
+  fill: #fff;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.header.menu-open .menu-toggle .bar-top {
+  transform: translateY(2.5px) rotate(45deg);
+}
+
+.header.menu-open .menu-toggle .bar-bottom {
+  transform: translateY(-2.5px) rotate(-45deg);
+}
+
+/* Hero --------------------------------------------------------------------- */
+
+.hero {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hero > * {
+  pointer-events: auto;
+}
+
+.hero-content {
+  position: absolute;
+  left: var(--gutter-start);
+  bottom: var(--hero-bottom);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.hero-title {
+  margin: 0;
+  font-family: "Reference Display", "Reference Sans", Arial, sans-serif;
+  font-weight: 500;
+  font-optical-sizing: auto;
+  font-size: var(--display-size);
+  line-height: var(--display-leading);
+  letter-spacing: -2.1px;
+  -webkit-text-stroke: 0.12px currentColor;
+  white-space: nowrap;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.44);
+}
+
+.line {
+  display: block;
+  transform-origin: left center;
+}
+
+.line-reveal {
+  display: block;
+}
+
+.line-one {
+  color: #fff;
+  transform: scaleX(0.775);
+}
+
+.line-two {
+  color: rgba(211, 207, 207, 0.78);
+  transform: scaleX(0.793);
+}
+
+.hero-copy {
+  position: relative;
+  left: 1px;
+  top: var(--copy-optical-shift);
+  margin: var(--title-copy-gap) 0 0;
+  width: clamp(390px, 31.67vw, 500px);
+  max-width: 100%;
+  font-size: var(--copy-size);
+  line-height: var(--copy-leading);
+  font-weight: 350;
+  letter-spacing: 0.13px;
+  color: rgba(226, 229, 228, 0.84);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.primary-cta {
+  position: relative;
+  margin-top: var(--copy-cta-gap);
+  width: var(--cta-width);
+  height: var(--cta-height);
+  border: 0;
+  border-radius: 7px;
+  background: #fff;
+  color: #111;
+  font-family: inherit;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.38);
+  cursor: pointer;
+}
+
+.primary-cta .label {
+  position: absolute;
+  left: 8.125%;
+  top: 50%;
+  transform: translateY(calc(-50% + var(--control-baseline-shift)));
+  font-size: var(--primary-control-font-size);
+  font-weight: 450;
+  letter-spacing: -0.3px;
+}
+
+.primary-cta .arrow-box {
+  position: absolute;
+  right: 3.125%;
+  top: 14.286%;
+  width: 20.625%;
+  height: 71.429%;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #070909;
+}
+
+/* Demo card ---------------------------------------------------------------- */
+
+.demo-card {
+  position: absolute;
+  right: var(--gutter-end);
+  bottom: var(--hero-bottom);
+  width: var(--card-width);
+  aspect-ratio: 201 / 265;
+  container-type: inline-size;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: clamp(12px, 1.52vh, 18px);
+  background: linear-gradient(145deg, rgba(24, 22, 20, 0.8), rgba(5, 12, 14, 0.86));
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.44),
+    0 0 0 3px rgba(255, 255, 255, 0.035) inset,
+    0 0 0 1px rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(14px) saturate(108%);
+  -webkit-backdrop-filter: blur(14px) saturate(108%);
+  transform-origin: 82% 50%;
+}
+
+.demo-visual {
+  position: absolute;
+  left: 3.5cqw;
+  top: 4cqw;
+  width: 92.5cqw;
+  height: 92cqw;
+  overflow: hidden;
+  border-radius: 4cqw;
+  background: #101a1e;
+}
+
+.demo-thumb {
+  object-fit: cover;
+  object-position: center;
+  filter: brightness(0.89) saturate(0.93) contrast(1.03);
+}
+
+.play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 29cqw;
+  height: 29cqw;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 50%;
+  background: rgba(3, 5, 7, 0.47);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  cursor: pointer;
+}
+
+.play svg {
+  width: 10cqw;
+  height: 10cqw;
+  margin-left: 1cqw;
+}
+
+.watch-button {
+  position: absolute;
+  left: 3.5cqw;
+  right: 3.5cqw;
+  top: 102cqw;
+  bottom: 5cqw;
+  border: 1px solid rgba(255, 255, 255, 0.21);
+  border-radius: 3.4cqw;
+  background: linear-gradient(145deg, rgba(26, 34, 36, 0.86), rgba(16, 29, 33, 0.9));
+  backdrop-filter: blur(14px) saturate(110%);
+  -webkit-backdrop-filter: blur(14px) saturate(110%);
+  color: #f1f4f4;
+  font-family: inherit;
+  font-size: var(--compact-control-font-size);
+  font-weight: 430;
+  letter-spacing: -0.22px;
+  cursor: pointer;
+}
+
+.watch-button span {
+  display: inline-block;
+  transform: translate(var(--control-inline-nudge), calc(var(--watch-baseline-shift) - 2px));
+}
+
+/* Entrance choreography ----------------------------------------------------- */
+
+@keyframes entrance-brand {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 7px, 0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes entrance-nav {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes entrance-action {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes entrance-line {
+  from {
+    transform: translate3d(0, 110%, 0) skewY(2deg);
+  }
+  to {
+    transform: translate3d(0, 0, 0) skewY(0deg);
+  }
+}
+
+@keyframes entrance-copy {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.994);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes entrance-card {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.968);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.motion-pending .brand {
+  animation: entrance-brand 580ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both;
+}
+
+.motion-pending .nav a {
+  animation: entrance-nav 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.motion-pending .nav a:nth-child(1) {
+  animation-delay: 130ms;
+}
+.motion-pending .nav a:nth-child(2) {
+  animation-delay: 175ms;
+}
+.motion-pending .nav a:nth-child(3) {
+  animation-delay: 220ms;
+}
+.motion-pending .nav a:nth-child(4) {
+  animation-delay: 265ms;
+}
+
+.motion-pending .time-panel {
+  animation: entrance-nav 520ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
+}
+
+.motion-pending .sign-up {
+  animation: entrance-action 520ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
+}
+
+.motion-pending .menu-toggle {
+  animation: entrance-action 520ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+}
+
+.motion-pending .line {
+  overflow: hidden;
+}
+
+.motion-pending .line-one .line-reveal {
+  animation: entrance-line 800ms cubic-bezier(0.22, 1, 0.36, 1) 300ms both;
+}
+
+.motion-pending .line-two .line-reveal {
+  animation: entrance-line 850ms cubic-bezier(0.22, 1, 0.36, 1) 440ms both;
+}
+
+.motion-pending .hero-copy {
+  animation: entrance-copy 620ms cubic-bezier(0.16, 1, 0.3, 1) 740ms both;
+}
+
+.motion-pending .primary-cta {
+  animation: entrance-action 560ms cubic-bezier(0.16, 1, 0.3, 1) 960ms both;
+}
+
+.motion-pending .demo-card {
+  animation: entrance-card 920ms cubic-bezier(0.22, 1, 0.36, 1) 1040ms both;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .screen button,
+  .screen a {
+    transition:
+      filter 140ms ease,
+      opacity 140ms ease;
+  }
+
+  .screen button:hover,
+  .screen a:hover {
+    filter: brightness(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen *,
+  .screen *::before,
+  .screen *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Tablet ------------------------------------------------------------------- */
+
+@media (min-width: 620px) and (max-width: 790px),
+  (min-width: 620px) and (max-width: 1100px) and (orientation: portrait) {
+  .screen {
+    /* The display scale is driven by viewport height; on a portrait tablet that
+       outruns the width, and the nowrap headline would slide under the demo
+       card. Cap it against the width too. */
+    --display-size: min(clamp(58px, 7.64vh, 88px), 8.6vw);
+    --display-leading: min(clamp(72px, 9.34vh, 106px), 10.5vw);
+  }
+
+  .header {
+    align-items: center;
+    height: 46px;
+  }
+
+  .brand {
+    top: 0;
+  }
+
+  .menu-toggle {
+    display: grid;
+  }
+
+  .header-actions {
+    position: absolute;
+    right: 0;
+    top: calc(46px + 12px);
+    flex: none;
+    width: min(324px, calc(100vw - var(--gutter-start) - var(--gutter-end)));
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(24, 30, 32, 0.86), rgba(8, 16, 19, 0.9));
+    backdrop-filter: blur(18px) saturate(110%);
+    -webkit-backdrop-filter: blur(18px) saturate(110%);
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, 0.5),
+      0 0 0 3px rgba(255, 255, 255, 0.035) inset,
+      0 0 0 1px rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px) scale(0.985);
+    /* Hold visibility until the fade-out finishes, but flip it on instantly
+       when opening — otherwise the first link is not yet focusable. */
+    transition:
+      opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 200ms;
+  }
+
+  .header.menu-open .header-actions {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    transition:
+      opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s;
+  }
+
+  .nav {
+    top: 0;
+    margin-left: 0;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .nav a:nth-child(1) {
+    top: 0;
+  }
+
+  .nav a:nth-child(4) {
+    margin-left: 0;
+  }
+
+  .nav a.active::after {
+    bottom: -6px;
+  }
+
+  .time-panel {
+    margin-left: 0;
+    width: 100%;
+    height: auto;
+    padding: 12px 0 0 8px;
+    border-left: 0;
+    border-top: 1px solid rgba(230, 230, 230, 0.22);
+  }
+
+  .sign-up {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  /* Wide enough that the copy's own line breaks still land where they're
+     written instead of wrapping again. */
+  .hero-copy {
+    width: min(500px, calc(100vw - var(--gutter-start) - var(--gutter-end)));
+  }
+}
+
+/* Mobile ------------------------------------------------------------------- */
+
+@media (max-width: 619px) {
+  .screen {
+    --mobile-gutter: clamp(18px, 5.6vw, 28px);
+    --gutter-start: calc(var(--mobile-gutter) + env(safe-area-inset-left));
+    --gutter-end: calc(var(--mobile-gutter) + env(safe-area-inset-right));
+    --header-top: calc(clamp(16px, 2.2svh, 24px) + env(safe-area-inset-top));
+    --hero-bottom: calc(clamp(26px, 4.4svh, 44px) + env(safe-area-inset-bottom));
+    --display-size: clamp(40px, 8.2svh, 64px);
+    --display-leading: clamp(46px, 9.6svh, 74px);
+    --copy-size: clamp(13px, 1.8svh, 16px);
+    --copy-leading: clamp(18px, 2.5svh, 22px);
+    --cta-width: clamp(140px, 44vw, 164px);
+    --card-width: clamp(132px, 38vw, 168px);
+  }
+
+  .header {
+    align-items: center;
+    height: 46px;
+  }
+
+  .brand {
+    top: 0;
+  }
+
+  .menu-toggle {
+    display: grid;
+  }
+
+  .header-actions {
+    position: absolute;
+    right: 0;
+    top: calc(46px + 12px);
+    flex: none;
+    width: min(340px, calc(100vw - var(--gutter-start) - var(--gutter-end)));
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(24, 30, 32, 0.86), rgba(8, 16, 19, 0.9));
+    backdrop-filter: blur(18px) saturate(110%);
+    -webkit-backdrop-filter: blur(18px) saturate(110%);
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, 0.5),
+      0 0 0 3px rgba(255, 255, 255, 0.035) inset,
+      0 0 0 1px rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px) scale(0.985);
+    /* Hold visibility until the fade-out finishes, but flip it on instantly
+       when opening — otherwise the first link is not yet focusable. */
+    transition:
+      opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 200ms;
+  }
+
+  .header.menu-open .header-actions {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    transition:
+      opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s;
+  }
+
+  .nav {
+    top: 0;
+    margin-left: 0;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .nav a:nth-child(1) {
+    top: 0;
+  }
+
+  .nav a:nth-child(4) {
+    margin-left: 0;
+  }
+
+  .nav a.active::after {
+    bottom: -6px;
+  }
+
+  .time-panel {
+    margin-left: 0;
+    width: 100%;
+    height: auto;
+    padding: 12px 0 0 8px;
+    border-left: 0;
+    border-top: 1px solid rgba(230, 230, 230, 0.22);
+  }
+
+  .sign-up {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .hero-title {
+    letter-spacing: -1.2px;
+  }
+
+  .line-one {
+    transform: scaleX(0.78);
+  }
+
+  .line-two {
+    transform: scaleX(0.55);
+  }
+
+  .hero-copy {
+    width: min(100%, calc(100vw - var(--gutter-start) - var(--gutter-end)));
+  }
+
+  .hero-copy br {
+    display: none;
+  }
+
+  .demo-card {
+    top: clamp(176px, 32svh, 300px);
+    bottom: auto;
+  }
+}
+
+/* Short viewports ----------------------------------------------------------- */
+
+@media (min-width: 620px) and (max-height: 620px) {
+  .screen {
+    --display-size: clamp(44px, 7.2vh, 62px);
+    --display-leading: clamp(52px, 8.8vh, 74px);
+    --hero-bottom: clamp(24px, 4.2vh, 40px);
+    --card-width: clamp(140px, 17.5vh, 180px);
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .screen {
+    --header-top: clamp(12px, 3vh, 18px);
+    --hero-bottom: clamp(18px, 5vh, 30px);
+    --display-size: clamp(32px, 11vh, 48px);
+    --display-leading: clamp(36px, 13vh, 56px);
+    --copy-size: clamp(12px, 3.4vh, 15px);
+    --copy-leading: clamp(16px, 4.4vh, 20px);
+    --cta-height: clamp(34px, 9vh, 40px);
+    --card-width: clamp(112px, 30vh, 150px);
+  }
+
+  .hero-copy br {
+    display: none;
+  }
+
+  .demo-card {
+    top: auto;
+    bottom: var(--hero-bottom);
+  }
+}

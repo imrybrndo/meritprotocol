@@ -1,0 +1,1491 @@
+/*
+ * MERIT Console — design tokens.
+ *
+ * These are the landing-page tokens (app/globals.css) verbatim, so the console
+ * and the website read as one product: near-neutral surfaces, amber for
+ * protocol state, green and red reserved for P&L. Change a value there and
+ * here together, or the two halves drift apart.
+ */
+:root {
+  /* Surfaces, darkest to lightest. */
+  --base: #08090b;
+  --surface: #0e1013;
+  --raised: #14171b;
+  --overlay: #1a1e23;
+
+  /* Hairlines. The grid is drawn with borders, never with shadows. */
+  --line: #1f242a;
+  --line-strong: #2c333b;
+
+  /* Text ramp. */
+  --ink: #e9ecef;
+  --ink-muted: #99a2ac;
+  --ink-dim: #626c77;
+  --ink-faint: #414a54;
+
+  /* Protocol accent. Verified state, focus, active nav and approvals only. */
+  --signal: #f0b429;
+  --signal-hover: #ffc44d;
+  --signal-dim: #7a5c14;
+  --signal-wash: #1c1608;
+  /* Text sitting on a filled signal surface. */
+  --on-signal: #0a0b0d;
+
+  /* P&L semantics. Never decorative. */
+  --profit: #2fbf71;
+  --profit-wash: #0b1f16;
+  --loss: #e5484d;
+  --loss-wash: #22100f;
+
+  /* Neutral informational state. */
+  --info: #6b95d6;
+  --info-wash: #0d1520;
+
+  /* Chart polarity: the conventional green/red, matching every other venue an
+     operator has open. It is the weaker pair for colour vision — green↔red
+     separate by only ΔE 2.2 under deuteranopia against blue↔red's 26.6 — so
+     nothing on screen depends on hue alone; every figure is also written out. */
+  --chart-up: var(--profit);
+  --chart-down: var(--loss);
+
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+html { color-scheme: dark; background: var(--base); }
+
+/* Same selection and focus treatment as the site: the accent is how the
+   product signals "this is live", in the browser and in the console alike. */
+::selection { background: var(--signal); color: var(--on-signal); }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+/* Terminal-style scrollbars: present, but not a design element. */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border: 3px solid var(--base);
+  border-radius: 999px;
+}
+
+/* Icons are lucide glyphs (see icons.ts). They inherit colour from the label
+   beside them, so they are styled through their container, not on their own. */
+.icon { flex: none; display: block; }
+
+body {
+  background: var(--base);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.shell { display: grid; grid-template-columns: 208px 1fr; height: 100vh; }
+
+/* ------------------------------------------------------------------ rail -- */
+.rail {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 12px;
+}
+
+.brand {
+  display: flex; align-items: center; gap: 9px;
+  padding: 38px 18px 22px;
+  letter-spacing: -0.01em;
+}
+.brand-mark { color: var(--signal); display: flex; }
+.brand-text { font-weight: 600; font-size: 13px; letter-spacing: 0.06em; }
+.brand-sub { color: var(--ink-faint); font-weight: 400; margin-left: 5px; letter-spacing: 0.02em; }
+
+nav { display: flex; flex-direction: column; gap: 1px; padding: 0 10px; }
+
+.nav-item {
+  appearance: none; border: 0; background: transparent;
+  color: var(--ink-muted); font: inherit; text-align: left;
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 5px; cursor: pointer;
+}
+/* The glyph sits a step behind the label until the panel is the one in view,
+   where it picks up the same amber as the active marker. */
+.nav-item .icon { color: var(--ink-dim); }
+.nav-item:hover { background: var(--raised); color: var(--ink); }
+.nav-item:hover .icon { color: var(--ink-muted); }
+.nav-item.is-active { background: var(--raised); color: var(--ink); box-shadow: inset 2px 0 0 var(--signal); }
+.nav-item.is-active .icon { color: var(--signal); }
+
+.rail-foot { margin-top: auto; padding: 0 18px; }
+.status-line {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-dim);
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-dim); flex: none; }
+.dot.is-up { background: var(--profit); }
+.dot.is-down { background: var(--loss); }
+
+/* ----------------------------------------------------------------- stage -- */
+.stage { position: relative; overflow: hidden; }
+.panel { position: absolute; inset: 0; display: none; flex-direction: column; }
+.panel.is-active { display: flex; }
+
+.panel-head { padding: 40px 32px 18px; border-bottom: 1px solid var(--line); }
+.panel-head h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
+.panel-head p { color: var(--ink-muted); margin-top: 4px; }
+
+.panel-body { flex: 1; overflow-y: auto; padding: 22px 32px 32px; }
+
+.empty {
+  border: 1px dashed var(--line-strong); border-radius: 8px;
+  padding: 26px; color: var(--ink-muted); max-width: 620px;
+}
+
+/* ----------------------------------------------------------------- table -- */
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th {
+  text-align: left; font-weight: 500; font-size: 10px; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--ink-dim);
+  padding: 0 14px 9px 0; border-bottom: 1px solid var(--line);
+}
+td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--line); }
+tbody tr:hover { background: var(--raised); }
+.num { text-align: right; font-family: var(--mono); }
+.mono { font-family: var(--mono); font-size: 12px; }
+
+.tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 3px; border: 1px solid var(--line-strong); color: var(--ink-muted);
+}
+.tag.is-good {
+  color: var(--profit); background: var(--profit-wash);
+  border-color: color-mix(in srgb, var(--profit) 30%, transparent);
+}
+.tag.is-warn {
+  color: var(--signal); background: var(--signal-wash);
+  border-color: color-mix(in srgb, var(--signal) 35%, transparent);
+}
+/* Demo data must be unmistakable, so it never borrows the protocol accent. */
+.tag.is-demo { color: var(--ink-dim); border-style: dashed; border-color: var(--ink-faint); }
+
+/* ------------------------------------------------------------------ chat -- */
+
+.panel-head.is-chat { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+
+button.ghost {
+  appearance: none; font: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; color: var(--ink-muted);
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  padding: 5px 11px; white-space: nowrap;
+}
+button.ghost:hover { color: var(--ink); border-color: var(--ink-dim); }
+
+.transcript { flex: 1; overflow-y: auto; scroll-behavior: smooth; padding: 30px 32px 8px; }
+.transcript > * { max-width: 760px; margin-inline: auto; }
+
+/* ----------------------------------------------------------- empty state -- */
+.welcome { padding: 44px 0 24px; }
+.welcome h2 {
+  font-size: 24px; font-weight: 600; letter-spacing: -0.025em;
+  margin-bottom: 10px;
+}
+.welcome p { color: var(--ink-muted); max-width: 60ch; margin-bottom: 26px; }
+
+.suggestions { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggestions button {
+  appearance: none; font: inherit; cursor: pointer; text-align: left;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--raised); color: var(--ink-muted);
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  padding: 7px 14px;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.suggestions button .icon { color: var(--ink-faint); transition: color 0.12s ease; }
+.suggestions button:hover { color: var(--ink); border-color: var(--ink-dim); }
+.suggestions button:hover .icon { color: var(--signal); }
+
+/* ----------------------------------------------------------------- turns -- */
+.turn { margin-bottom: 22px; }
+
+/* Operator turns read as something the person said — compact, right-aligned. */
+.turn.is-user { display: flex; justify-content: flex-end; }
+.turn.is-user .turn-body {
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px 14px 4px 14px;
+  padding: 10px 14px;
+  max-width: 78%;
+  white-space: pre-wrap;
+}
+
+/* Agent turns read as a document, not a chat bubble — the reasoning matters. */
+.turn.is-agent { display: grid; grid-template-columns: 22px 1fr; gap: 12px; }
+.turn.is-agent .turn-mark {
+  color: var(--signal); display: flex; justify-content: center; padding-top: 3px;
+  user-select: none;
+}
+.turn.is-agent .turn-body { white-space: pre-wrap; padding-top: 1px; }
+
+/* A caret only while tokens are still arriving. */
+.turn.is-streaming .turn-body::after {
+  content: "";
+  display: inline-block; width: 7px; height: 14px;
+  margin-left: 2px; vertical-align: -2px;
+  background: var(--signal);
+  animation: blink 1.05s steps(2, start) infinite;
+}
+@keyframes blink { to { visibility: hidden; } }
+
+/* Tool activity is a trace line, not a message. */
+.turn.is-tool { margin-bottom: 14px; }
+.turn.is-tool .turn-body {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-muted);
+  background: var(--raised); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 11px;
+}
+.turn.is-tool .turn-body .icon { color: var(--signal); }
+
+.turn.is-error .turn-body {
+  display: flex; align-items: flex-start; gap: 9px;
+  border-left: 2px solid var(--loss);
+  background: var(--loss-wash);
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px; color: var(--ink);
+}
+.turn.is-error .turn-body .icon { color: var(--loss); margin-top: 2px; }
+
+/* ------------------------------------------------------------- approvals -- */
+#approvals { padding: 0 32px; }
+#approvals > * { max-width: 760px; margin-inline: auto; }
+
+.approval {
+  border: 1px solid color-mix(in srgb, var(--signal) 35%, var(--line));
+  background: var(--signal-wash);
+  border-radius: 10px; padding: 15px 17px; margin-bottom: 12px;
+}
+.approval-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--signal); margin-bottom: 9px;
+}
+.approval-summary { font-family: var(--mono); font-size: 13.5px; margin-bottom: 5px; }
+.approval-note { color: var(--ink-muted); margin-bottom: 14px; max-width: 62ch; }
+.approval-actions { display: flex; gap: 8px; }
+
+button.act {
+  appearance: none; font: inherit; cursor: pointer;
+  border: 1px solid var(--line-strong); background: var(--raised); color: var(--ink);
+  padding: 7px 15px; border-radius: 6px;
+}
+button.act:hover { border-color: var(--ink-dim); }
+button.act.is-primary {
+  background: var(--signal); border-color: var(--signal);
+  color: var(--on-signal); font-weight: 500;
+}
+button.act.is-primary:hover { background: var(--signal-hover); border-color: var(--signal-hover); }
+
+/* -------------------------------------------------------------- composer -- */
+.composer { padding: 12px 32px 18px; }
+.composer > * { max-width: 760px; margin-inline: auto; }
+
+.composer-box {
+  display: flex; align-items: flex-end; gap: 8px;
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 8px 8px 8px 14px;
+  transition: border-color 0.12s ease;
+}
+.composer-box:focus-within { border-color: var(--signal); }
+
+.composer-box textarea {
+  flex: 1; resize: none; font: inherit; line-height: 1.55;
+  background: transparent; color: var(--ink); border: 0;
+  padding: 6px 0; max-height: 168px;
+}
+.composer-box textarea:focus { outline: none; }
+.composer-box textarea::placeholder { color: var(--ink-dim); }
+
+.composer-box button {
+  appearance: none; cursor: pointer; flex: none;
+  display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 8px; border: 0;
+  background: var(--signal); color: var(--on-signal);
+  transition: background-color 0.12s ease, opacity 0.12s ease;
+}
+.composer-box button:disabled { opacity: 0.35; cursor: default; }
+.composer-box button:not(:disabled):hover { background: var(--signal-hover); }
+
+.composer-hint {
+  display: flex; align-items: center; gap: 4px;
+  color: var(--ink-dim); font-size: 11px; margin-top: 9px; padding-left: 2px;
+}
+.composer-hint kbd {
+  font-family: var(--mono); font-size: 10px;
+  border: 1px solid var(--line-strong); border-radius: 4px;
+  padding: 1px 5px; color: var(--ink-muted);
+}
+
+/* ----------------------------------------------------------------- perps -- */
+
+.timeframes { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+.timeframes button {
+  appearance: none; font: inherit; font-family: var(--mono); font-size: 11px; cursor: pointer;
+  background: transparent; color: var(--ink-muted); border: 0;
+  padding: 4px 10px; border-radius: 5px;
+}
+.timeframes button:hover { color: var(--ink); }
+.timeframes button.is-active { background: var(--raised); color: var(--ink); }
+
+.perps { flex: 1; display: grid; grid-template-columns: 216px 1fr; min-height: 0; }
+
+/* ------------------------------------------------------------ market rail -- */
+.market-rail {
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; min-height: 0;
+}
+/* The glyph sits inside the field rather than beside it, so the control still
+   reads as one box. */
+.search-field { position: relative; margin: 14px 14px 10px; }
+.search-field .icon {
+  position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
+  color: var(--ink-dim); pointer-events: none;
+}
+.search-field:focus-within .icon { color: var(--ink-muted); }
+#market-search {
+  width: 100%; font: inherit; font-size: 12px;
+  background: var(--raised); color: var(--ink);
+  border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 10px 6px 27px;
+}
+#market-search:focus { outline: none; border-color: var(--signal); }
+/* Chromium's own clear button is a second, differently-styled affordance. */
+#market-search::-webkit-search-cancel-button { display: none; }
+
+.classes { display: flex; gap: 2px; margin: 0 14px 10px; }
+.classes button {
+  appearance: none; font: inherit; font-size: 11px; cursor: pointer; flex: 1;
+  background: var(--surface); color: var(--ink-muted);
+  border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px;
+}
+.classes button:hover { color: var(--ink); }
+.classes button.is-active { background: var(--raised); color: var(--ink); border-color: var(--line-strong); }
+
+.market-rows { flex: 1; overflow-y: auto; padding: 0 8px 14px; }
+.market-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  width: 100%; text-align: left; cursor: pointer;
+  appearance: none; font: inherit; background: transparent; border: 0;
+  color: var(--ink-muted); padding: 6px 8px; border-radius: 5px;
+}
+.market-row:hover { background: var(--raised); color: var(--ink); }
+.market-row.is-active { background: var(--raised); color: var(--ink); box-shadow: inset 2px 0 0 var(--signal); }
+.market-row .lead { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.market-row .sym { font-family: var(--mono); font-size: 12px; }
+.market-logo {
+  width: 16px; height: 16px; border-radius: 50%; flex: none;
+  background: var(--surface); object-fit: contain;
+}
+/* Symbol initial stands in until (or instead of) the logo, so a row is never
+   a blank hole while icons load or when a market has no artwork. */
+.market-logo-fallback {
+  width: 16px; height: 16px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: var(--raised); color: var(--ink-dim);
+  font-family: var(--mono); font-size: 8px; letter-spacing: 0;
+}
+.market-row .oi { font-family: var(--mono); font-size: 10px; color: var(--ink-dim); }
+
+/* ------------------------------------------------------------ market view -- */
+.market-view { overflow-y: auto; padding: 20px 26px 28px; min-height: 0; }
+
+.market-title { display: flex; align-items: center; gap: 11px; margin-bottom: 2px; }
+.market-title .market-logo, .market-title .market-logo-fallback {
+  width: 26px; height: 26px; font-size: 11px;
+}
+.market-title h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.market-title .name { color: var(--ink-muted); }
+
+.market-note {
+  color: var(--ink-muted); max-width: 74ch; margin-bottom: 16px; font-size: 12px;
+}
+
+.market-price {
+  font-family: var(--mono); font-size: 28px; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; margin-bottom: 18px;
+}
+
+/* Flex rather than grid: a wrapped grid leaves an empty cell when the tile
+   count does not divide by the column count, and that gap reads as a broken
+   panel. Flex items stretch to fill whatever row they land on. */
+.tiles { display: flex; flex-wrap: wrap; gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  margin-bottom: 22px; }
+.tile { flex: 1 1 132px; background: var(--base); padding: 11px 13px; }
+.tile dt {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 3px;
+}
+.tile dd { font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; }
+.tile dd.is-up { color: var(--chart-up); }
+.tile dd.is-down { color: var(--chart-down); }
+
+/* ----------------------------------------------------------------- chart -- */
+.chart-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 14px; margin-bottom: 10px; min-height: 18px;
+}
+.chart-head h3 { font-size: 12px; font-weight: 500; color: var(--ink-muted); }
+.readout {
+  display: flex; gap: 14px; font-family: var(--mono); font-size: 11px;
+  color: var(--ink-muted); font-variant-numeric: tabular-nums;
+}
+.readout b { color: var(--ink); font-weight: 500; }
+
+/* The chart sizes itself from this box, so the plot follows the window instead
+   of sitting at one hardcoded height. */
+.chart { height: clamp(300px, 46vh, 560px); margin-bottom: 8px; }
+.chart svg { display: block; touch-action: none; }
+.chart-empty { color: var(--ink-muted); padding: 40px 0; }
+
+.chart-key {
+  display: flex; gap: 16px; align-items: center;
+  color: var(--ink-dim); font-size: 11px; margin-bottom: 26px;
+}
+.chart-key span { display: inline-flex; align-items: center; gap: 6px; }
+.chart-key i {
+  width: 9px; height: 13px; border-radius: 1px; display: inline-block;
+  border: 1px solid currentColor;
+}
+.chart-key .up { color: var(--chart-up); }
+.chart-key .down { color: var(--chart-down); }
+/* Both filled now that the bodies are: the legend has to look like the chart. */
+.chart-key i { background: currentColor; }
+
+/* ------------------------------------------------------------- orderbook -- */
+.book-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 4px 26px; margin-bottom: 26px;
+}
+.book h3, .exposure h3 {
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 9px;
+}
+
+/* The spread sits above both columns, because it belongs to neither. */
+.book-spread {
+  grid-column: 1 / -1; order: -1;
+  display: flex; align-items: baseline; justify-content: center; gap: 8px;
+  font-size: 11px; color: var(--ink-dim); margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.book-spread b { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--ink); }
+
+.book-rows { display: flex; flex-direction: column; }
+.book-row {
+  position: relative; display: flex; align-items: center; justify-content: space-between;
+  padding: 3px 8px; border-radius: 3px; overflow: hidden;
+  font-size: 11.5px; font-variant-numeric: tabular-nums;
+}
+.book-row.is-empty { opacity: 0.25; }
+
+/* Depth, drawn behind the numbers. Bids grow from the right and asks from the
+   left so the two columns read as one shape opening outward from the spread. */
+.book-depth {
+  position: absolute; top: 0; bottom: 0; width: 0;
+  transition: width 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+  pointer-events: none;
+}
+.book[data-side="bid"] .book-depth {
+  right: 0; background: color-mix(in srgb, var(--chart-up) 15%, transparent);
+}
+.book[data-side="ask"] .book-depth {
+  left: 0; background: color-mix(in srgb, var(--chart-down) 15%, transparent);
+}
+
+.book-price { position: relative; font-family: var(--mono); }
+.book-price.bid { color: var(--chart-up); }
+.book-price.ask { color: var(--chart-down); }
+.book-size { position: relative; font-family: var(--mono); color: var(--ink-muted); }
+
+/* A level that changed since the last poll. Brief and low-contrast: the book is
+   watched out of the corner of the eye, and a hard flash every two seconds is
+   an interruption, not information. */
+@keyframes book-lift {
+  from { background-color: color-mix(in srgb, var(--chart-up) 30%, transparent); }
+  to { background-color: transparent; }
+}
+@keyframes book-fill {
+  from { background-color: color-mix(in srgb, var(--chart-down) 30%, transparent); }
+  to { background-color: transparent; }
+}
+.book-row.is-lift { animation: book-lift 0.6s ease-out; }
+.book-row.is-fill { animation: book-fill 0.6s ease-out; }
+
+/* ----------------------------------------------------------------- trade -- */
+.trade-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 26px;
+}
+.trade-account, .trade-ticket {
+  border: 1px solid var(--line-strong); border-radius: 12px;
+  background: color-mix(in srgb, var(--raised) 45%, transparent);
+  padding: 14px 16px;
+}
+.trade-account h3, .trade-ticket h3 {
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 12px;
+}
+.trade-account .tiles { margin-bottom: 14px; }
+.trade-account table { font-size: 11.5px; }
+.pnl-abs { color: var(--ink-dim); font-size: 10.5px; }
+
+/* Not an error state — it is the first screen for a new address, and it says
+   what to do rather than what went wrong. */
+.trade-unfunded { display: flex; gap: 11px; align-items: flex-start; }
+.trade-unfunded .icon { color: var(--signal); margin-top: 2px; }
+.trade-unfunded b { font-size: 13px; font-weight: 500; }
+.trade-unfunded p { color: var(--ink-muted); font-size: 12px; line-height: 1.55; margin-top: 5px; }
+.funding-body { flex: 1; min-width: 0; }
+.funding-steps { list-style: none; margin: 12px 0 0; padding: 0; }
+.funding-steps li { display: flex; flex-direction: column; gap: 2px; margin-bottom: 9px; }
+.funding-steps b { font-size: 12px; font-weight: 500; }
+.funding-steps span { font-size: 12px; line-height: 1.5; color: var(--ink-muted); }
+.receive { margin-top: 12px; }
+.receive-facts {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--line); border: 1px solid var(--line);
+  border-radius: 8px; overflow: hidden; margin-bottom: 9px;
+}
+.receive-facts > div { background: var(--surface); padding: 9px 11px; }
+.receive-facts dt {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 3px;
+}
+.receive-facts dd { font-size: 11.5px; }
+.receive-qr {
+  display: block; width: 132px; height: 132px; margin-top: 10px;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+}
+
+.trade-address-row { display: flex; align-items: center; gap: 8px; }
+.trade-address-row .trade-address { flex: 1; }
+.signing-check {
+  display: flex; align-items: center; gap: 11px; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line);
+}
+.signing-check .hint { margin: 0; flex: 1; min-width: 200px; }
+.signing-check .hint.is-good { color: var(--profit); }
+.signing-check .hint.is-warn { color: var(--signal); }
+.signing-check .hint.is-bad { color: var(--loss); }
+
+.funding-status { margin-top: 12px; }
+.funding-status .tiles { margin-bottom: 10px; }
+.funding-send { width: 100%; height: 38px; border-radius: 9px; }
+
+.trade-address {
+  margin-top: 9px; padding: 8px 10px; border-radius: 7px;
+  background: var(--raised); border: 1px solid var(--line-strong);
+  font-size: 11.5px; word-break: break-all; color: var(--ink);
+}
+
+.side-choice { display: flex; gap: 8px; margin-bottom: 14px; }
+.side {
+  flex: 1; appearance: none; font: inherit; cursor: pointer;
+  text-transform: capitalize; font-size: 13px; font-weight: 500;
+  border-radius: 9px; padding: 9px 0; border: 1px solid var(--line-strong);
+  background: transparent; color: var(--ink-muted);
+}
+.side.long.is-active {
+  color: var(--chart-up); border-color: color-mix(in srgb, var(--chart-up) 55%, transparent);
+  background: color-mix(in srgb, var(--chart-up) 12%, transparent);
+}
+.side.short.is-active {
+  color: var(--chart-down); border-color: color-mix(in srgb, var(--chart-down) 55%, transparent);
+  background: color-mix(in srgb, var(--chart-down) 12%, transparent);
+}
+
+.ticket-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ticket-field { margin-bottom: 10px; }
+.ticket-field label {
+  display: block; margin-bottom: 5px;
+  font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-dim);
+}
+.ticket-field input, .ticket-field select, .ticket-field textarea {
+  width: 100%; font: inherit; font-family: var(--mono); font-size: 12px;
+  background: var(--raised); color: var(--ink); resize: none;
+  border: 1px solid var(--line-strong); border-radius: 7px; padding: 8px 10px;
+}
+.ticket-field input:focus, .ticket-field select:focus, .ticket-field textarea:focus {
+  outline: none; border-color: var(--signal);
+}
+.lever-row { display: flex; gap: 7px; }
+.lever-row select { flex: 1; }
+.lever-apply { padding: 0 14px; border-radius: 7px; }
+.ticket-locked { margin-top: 9px; }
+.trade-ticket input:disabled, .trade-ticket select:disabled, .trade-ticket textarea:disabled {
+  opacity: 0.45; cursor: not-allowed;
+}
+
+.ticket-submit { width: 100%; height: 38px; border-radius: 9px; margin-top: 4px; }
+
+/* The two steps, in the order they happen. */
+.trade-steps { list-style: none; margin: 4px 0 0; padding: 0; }
+.trade-steps li {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 11px 0; border-bottom: 1px solid var(--line);
+}
+.trade-steps li:last-child { border-bottom: 0; }
+.trade-steps b { font-size: 12px; font-weight: 500; }
+.trade-steps span { font-size: 12px; line-height: 1.5; color: var(--ink-muted); }
+
+@media (max-width: 1180px) {
+  .trade-grid { grid-template-columns: 1fr; }
+}
+
+.degraded {
+  display: flex; align-items: flex-start; gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--signal) 40%, var(--line));
+  border-radius: 7px; padding: 10px 13px; margin-bottom: 20px;
+  color: var(--ink-muted); font-size: 12px;
+}
+.degraded .icon { color: var(--signal); margin-top: 1px; }
+
+/* -------------------------------------------------------------- settings -- */
+/* One card, three bands: who you are, what the session is, how to get the keys
+   out. Each band is separated by a rule rather than floating as its own box. */
+.account-card {
+  border: 1px solid var(--line-strong); border-radius: 12px;
+  background: color-mix(in srgb, var(--raised) 55%, transparent);
+  max-width: 620px; margin-bottom: 14px; overflow: hidden;
+}
+
+.account-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+.account-head .avatar { width: 38px; height: 38px; border-radius: 12px; }
+.account-name { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.account-name b { font-size: 14px; font-weight: 500; }
+.account-name span { font-size: 11px; color: var(--ink-dim); word-break: break-all; }
+
+.account-facts {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px; background: var(--line); border-top: 1px solid var(--line);
+}
+.account-facts > div { background: var(--surface); padding: 11px 16px; }
+.account-facts dt {
+  font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 3px;
+}
+.account-facts dd { font-family: var(--mono); font-size: 12px; word-break: break-word; }
+
+.account-secrets { padding: 14px 16px; border-top: 1px solid var(--line); }
+.account-secrets-head {
+  font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim);
+}
+.account-secrets .hint { margin: 5px 0 11px; }
+.account-secrets .act { display: inline-flex; align-items: center; gap: 7px; }
+
+/* ----------------------------------------------------------------- sheet -- */
+.sheet {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--base) 72%, transparent);
+  backdrop-filter: blur(6px);
+}
+.sheet[hidden] { display: none !important; }
+.sheet-card {
+  width: min(460px, calc(100vw - 48px));
+  border: 1px solid var(--line-strong); border-radius: 14px;
+  background: var(--surface); padding: 22px 24px 20px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  animation: rise 0.24s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.sheet-card h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+
+/* The warning is amber, not red: nothing has gone wrong — but what happens next
+   is irreversible if it lands in the wrong hands. */
+.sheet-warn {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin: 10px 0 18px; padding: 10px 12px; border-radius: 9px;
+  font-size: 12px; line-height: 1.5; color: var(--ink-muted);
+  background: var(--signal-wash);
+  border: 1px solid color-mix(in srgb, var(--signal) 32%, var(--line));
+}
+.sheet-warn .icon { color: var(--signal); margin-top: 1px; }
+
+.sheet-actions { display: flex; gap: 9px; margin-top: 14px; }
+.sheet-actions .act { flex: 1; justify-content: center; height: 38px; border-radius: 9px; }
+.sheet-tools { display: flex; gap: 9px; margin-top: 14px; }
+.sheet-tools .ghost, .sheet-tools .act { flex: 1; justify-content: center; height: 38px; border-radius: 9px; }
+.sheet-timer { margin-top: 10px; font-size: 11px; color: var(--ink-faint); text-align: center; }
+
+.secret-key {
+  font-size: 12px; line-height: 1.6; word-break: break-all;
+  background: var(--raised); border: 1px solid var(--line-strong);
+  border-radius: 9px; padding: 12px 13px; color: var(--ink);
+}
+
+/* Provider choice. Two cards rather than a dropdown: the dot carries whether a
+   key is already stored, which a <select> has nowhere to put. */
+.provider-choice { display: flex; gap: 9px; margin-bottom: 16px; max-width: 560px; }
+.provider {
+  flex: 1; position: relative; cursor: pointer; text-align: left;
+  appearance: none; font: inherit;
+  display: flex; flex-direction: column; gap: 2px;
+  border: 1px solid var(--line-strong); border-radius: 10px;
+  background: color-mix(in srgb, var(--raised) 60%, transparent);
+  color: var(--ink); padding: 11px 13px;
+}
+.provider:hover { border-color: var(--ink-faint); }
+.provider.is-active {
+  border-color: color-mix(in srgb, var(--signal) 55%, transparent);
+  background: color-mix(in srgb, var(--signal) 10%, transparent);
+}
+.provider b { font-size: 13px; font-weight: 500; }
+.provider span { font-size: 11px; color: var(--ink-dim); }
+.provider-dot {
+  position: absolute; top: 12px; right: 12px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint);
+}
+.provider-dot.is-set { background: var(--profit); }
+
+.model-field { max-width: 560px; margin-top: 16px; }
+.model-field label {
+  display: block; font-weight: 500; margin-bottom: 6px;
+}
+.model-field select {
+  width: 100%; font: inherit; font-size: 12px; font-family: var(--mono);
+  background: var(--raised); color: var(--ink);
+  border: 1px solid var(--line-strong); border-radius: 6px; padding: 8px 11px;
+}
+.model-field select:focus { outline: none; border-color: var(--signal); }
+.model-field select:disabled { color: var(--ink-dim); }
+.model-note { margin-top: 8px; }
+
+.field { max-width: 560px; margin-bottom: 26px; }
+.field label { display: block; font-weight: 500; margin-bottom: 3px; }
+.field .hint { color: var(--ink-muted); margin-bottom: 9px; }
+.field-row { display: flex; gap: 8px; }
+.field input {
+  flex: 1; font: inherit; font-family: var(--mono); font-size: 12px;
+  background: var(--raised); color: var(--ink);
+  border: 1px solid var(--line-strong); border-radius: 6px; padding: 8px 11px;
+}
+.field input:focus { outline: none; border-color: var(--signal); }
+.notice {
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  padding: 14px 16px; max-width: 620px; color: var(--ink-muted); margin-bottom: 26px;
+}
+.notice.is-bad {
+  display: flex; align-items: flex-start; gap: 10px;
+  border-color: color-mix(in srgb, var(--loss) 45%, var(--line)); color: var(--ink);
+}
+.notice.is-bad .icon { color: var(--loss); margin-top: 2px; }
+
+/* ------------------------------------------------------------------ gate -- */
+/*
+ * Sign-in. The console is a credentialed instrument, so the door to it gets the
+ * one piece of imagery in the whole app; everything past this screen goes back
+ * to hairlines and numbers.
+ *
+ * Depth here is built in layers rather than with one blur: footage, a veil that
+ * holds contrast, two drifting pools of colour, and a grain that keeps the
+ * gradients from banding on a large dark display.
+ */
+
+.gate { position: fixed; inset: 0; display: grid; place-items: center; background: var(--base); }
+
+.gate-video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; pointer-events: none;
+  /* Softened rather than hidden: the footage is a bright, busy gold splash, and
+     at full sharpness it competes with the form for attention. The scale hides
+     the transparent edge the blur would otherwise leave. */
+  filter: blur(3px) brightness(0.8);
+  transform: scale(1.05);
+}
+
+/* Legibility, not decoration: the card has to hold contrast over every frame of
+   the video, including the bright ones. */
+.gate-veil {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 46% 52% at 62% 50%, rgba(8, 9, 11, 0.82), rgba(8, 9, 11, 0.36) 78%),
+    linear-gradient(to bottom, rgba(8, 9, 11, 0.62), rgba(8, 9, 11, 0.32) 45%, rgba(8, 9, 11, 0.74));
+}
+
+/* Two slow pools of light. They move far enough to feel alive over a minute and
+   not enough to catch the eye while someone is typing a passphrase. */
+.gate-aurora { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.gate-aurora i {
+  position: absolute; display: block; border-radius: 50%;
+  filter: blur(90px); opacity: 0.5;
+}
+.gate-aurora i:nth-child(1) {
+  width: 46vw; height: 46vw; left: -8vw; top: -14vw;
+  background: radial-gradient(circle, color-mix(in srgb, var(--signal) 46%, transparent), transparent 68%);
+  animation: drift-a 26s ease-in-out infinite alternate;
+}
+.gate-aurora i:nth-child(2) {
+  width: 40vw; height: 40vw; right: -10vw; bottom: -16vw;
+  background: radial-gradient(circle, color-mix(in srgb, var(--info) 40%, transparent), transparent 68%);
+  animation: drift-b 34s ease-in-out infinite alternate;
+}
+@keyframes drift-a { to { transform: translate3d(6vw, 5vw, 0) scale(1.12); } }
+@keyframes drift-b { to { transform: translate3d(-5vw, -4vw, 0) scale(1.08); } }
+
+/* Grain. Large flat gradients band badly on a dark panel; a little noise on top
+   is what keeps them smooth. */
+.gate-grain {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------------------------------------------------------------- stage -- */
+
+.gate-stage {
+  position: relative;
+  display: grid; grid-template-columns: minmax(0, 1fr) 424px;
+  gap: 72px; align-items: center;
+  width: min(1060px, calc(100vw - 96px));
+}
+
+/* The pitch column is context, not chrome — the card works without it, so it is
+   the first thing to go when the window is narrow. */
+.gate-pitch { max-width: 460px; animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.gate-pitch h2 {
+  font-size: 34px; line-height: 1.14; font-weight: 600; letter-spacing: -0.035em;
+  margin: 26px 0 14px;
+}
+.gate-pitch > p { color: var(--ink-muted); font-size: 13.5px; line-height: 1.6; max-width: 42ch; }
+
+.gate-points { list-style: none; margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
+.gate-points li {
+  display: grid; grid-template-columns: 26px 1fr; align-items: start; gap: 2px 12px;
+}
+.gate-points .icon { grid-row: span 2; margin-top: 2px; color: var(--signal); }
+.gate-points b { font-size: 12.5px; font-weight: 500; }
+.gate-points span { color: var(--ink-dim); font-size: 12px; line-height: 1.5; }
+
+/* ----------------------------------------------------------------- card -- */
+
+.gate-card {
+  position: relative;
+  border-radius: 16px;
+  padding: 26px 28px 22px;
+  background:
+    linear-gradient(165deg, color-mix(in srgb, var(--ink) 5%, transparent), transparent 42%),
+    color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(26px) saturate(140%);
+  border: 1px solid transparent;
+  /* The one shadow in the app. A hairline alone does not separate a panel from
+     moving video behind it. */
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) both 0.08s;
+}
+
+/* A gradient hairline, drawn as a masked ring so the border itself can carry the
+   accent instead of a flat grey. */
+.gate-card::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--signal) 55%, transparent),
+    color-mix(in srgb, var(--line-strong) 90%, transparent) 38%,
+    color-mix(in srgb, var(--line-strong) 90%, transparent) 62%,
+    color-mix(in srgb, var(--info) 45%, transparent)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+.gate-card-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 22px;
+}
+.gate-brand { display: flex; align-items: center; gap: 9px; }
+.gate-brand .brand-mark { color: var(--signal); display: flex; }
+.gate-brand .brand-text { font-weight: 600; font-size: 13px; letter-spacing: 0.06em; }
+.gate-pitch .gate-brand .brand-text { font-size: 14px; }
+
+/* Chain badge with a live dot: the console is Solana-only today, and says so. */
+.gate-chain {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
+  font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--ink-muted);
+  border: 1px solid color-mix(in srgb, var(--signal) 24%, var(--line-strong));
+  background: color-mix(in srgb, var(--signal) 8%, transparent);
+  border-radius: 999px; padding: 4px 10px 4px 8px;
+}
+.pulse {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--signal);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--signal) 60%, transparent);
+  animation: pulse 2.4s ease-out infinite;
+}
+@keyframes pulse {
+  70% { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.gate-card h1 { font-size: 21px; font-weight: 600; letter-spacing: -0.025em; }
+.gate-lede {
+  color: var(--ink-muted); font-size: 12.5px; line-height: 1.55;
+  margin: 7px 0 20px;
+}
+
+/* Three steps to a wallet: passphrase, phrase, proof. */
+.gate-steps { display: flex; gap: 5px; margin-bottom: 16px; }
+.gate-steps i {
+  width: 24px; height: 3px; border-radius: 2px; background: var(--line-strong);
+  transition: background-color 0.25s ease;
+}
+.gate-steps[data-step="1"] i:nth-child(1),
+.gate-steps[data-step="2"] i:nth-child(-n + 2),
+.gate-steps[data-step="3"] i { background: var(--signal); }
+
+.gate-view[hidden] { display: none; }
+.gate-view { animation: view-in 0.32s ease both; }
+@keyframes view-in {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+.gate-actions { display: flex; flex-direction: column; gap: 9px; }
+.gate-wide { width: 100%; height: 40px; }
+
+.gate-field { margin-bottom: 14px; }
+.gate-field label {
+  display: block; margin-bottom: 6px;
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-dim);
+}
+.gate-field input,
+.gate-field textarea {
+  width: 100%; font: inherit; font-family: var(--mono); font-size: 12px;
+  background: color-mix(in srgb, var(--raised) 72%, transparent);
+  color: var(--ink);
+  border: 1px solid var(--line-strong); border-radius: 9px; padding: 10px 12px;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.gate-field textarea { resize: none; line-height: 1.6; }
+.gate-field input:focus,
+.gate-field textarea:focus {
+  outline: none; border-color: color-mix(in srgb, var(--signal) 65%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 12%, transparent);
+}
+.gate-field input::placeholder,
+.gate-field textarea::placeholder { color: var(--ink-faint); }
+
+.gate-secret { position: relative; }
+.gate-secret input { padding-right: 38px; }
+.gate-eye {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  display: grid; place-items: center; width: 26px; height: 26px;
+  border-radius: 7px; color: var(--ink-dim);
+}
+.gate-eye:hover { color: var(--ink-muted); background: var(--overlay); }
+
+/* ------------------------------------------------------------ strength -- */
+/* The passphrase is the whole defence for the file on disk, so its quality is
+   worth showing while it is being chosen rather than judging afterwards. */
+.strength { display: flex; align-items: center; gap: 10px; margin: -4px 0 14px; }
+.strength-bar { display: flex; gap: 3px; flex: 1; }
+.strength-bar i {
+  height: 3px; flex: 1; border-radius: 2px; background: var(--line-strong);
+  transition: background-color 0.2s ease;
+}
+.strength-label { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+.strength[data-score="1"] .strength-bar i:nth-child(-n + 1),
+.strength[data-score="2"] .strength-bar i:nth-child(-n + 2),
+.strength[data-score="3"] .strength-bar i:nth-child(-n + 3),
+.strength[data-score="4"] .strength-bar i { background: currentColor; }
+.strength[data-score="1"] { color: var(--loss); }
+.strength[data-score="2"] { color: #d9822b; }
+.strength[data-score="3"] { color: var(--signal); }
+.strength[data-score="4"] { color: var(--profit); }
+.strength .strength-label { color: currentColor; }
+
+/* One slot for whatever went wrong on the current step. */
+.gate-note {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 12px; line-height: 1.5; border-radius: 9px;
+  padding: 10px 12px; margin-bottom: 14px;
+}
+.gate-note .icon { margin-top: 1px; }
+.gate-note.is-bad {
+  color: var(--ink); background: var(--loss-wash);
+  border: 1px solid color-mix(in srgb, var(--loss) 40%, var(--line));
+}
+.gate-note.is-bad .icon { color: var(--loss); }
+.gate-note.is-warn {
+  color: var(--ink-muted); background: var(--signal-wash);
+  border: 1px solid color-mix(in srgb, var(--signal) 35%, var(--line));
+}
+.gate-note.is-warn .icon { color: var(--signal); }
+
+.gate-submit {
+  width: 100%; height: 40px; margin-top: 6px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  position: relative; overflow: hidden;
+}
+.gate-submit:disabled { opacity: 0.5; cursor: default; }
+.gate-submit .icon { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* A single pass of light on hover — the button is the one place in the gate
+   that should feel like it wants pressing. */
+.act.is-primary.gate-submit::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.35), transparent 65%);
+  transform: translateX(-120%);
+}
+.act.is-primary.gate-submit:hover:not(:disabled)::after { animation: sheen 0.7s ease; }
+@keyframes sheen { to { transform: translateX(120%); } }
+
+.gate-back {
+  appearance: none; border: 0; background: transparent; font: inherit; cursor: pointer;
+  display: block; width: 100%; text-align: center;
+  color: var(--ink-dim); font-size: 12px; padding: 12px 0 2px;
+}
+.gate-back:hover { color: var(--ink-muted); }
+
+/* ----------------------------------------------------------- seed phrase -- */
+/* Twelve words is the whole account, so it stays behind a cover the operator has
+   to ask past — never on screen by accident, behind a shoulder or in a share. */
+.phrase-wrap { position: relative; margin-bottom: 12px; }
+.phrase {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--line); border: 1px solid var(--line);
+  border-radius: 10px; overflow: hidden;
+}
+.phrase span {
+  display: flex; align-items: baseline; gap: 7px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent); padding: 10px;
+  font-family: var(--mono); font-size: 12px;
+}
+.phrase b {
+  color: var(--ink-faint); font-weight: 400; font-size: 9px; min-width: 11px;
+}
+.phrase.is-hidden span { filter: blur(6px); user-select: none; }
+
+.phrase-cover {
+  position: absolute; inset: 0; appearance: none; cursor: pointer;
+  border: 1px dashed color-mix(in srgb, var(--signal) 35%, var(--line-strong));
+  border-radius: 10px; font: inherit;
+  background: color-mix(in srgb, var(--base) 55%, transparent);
+  display: grid; place-items: center;
+}
+.phrase-cover[hidden] { display: none; }
+.phrase-cover-inner {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--ink-muted); font-size: 11.5px;
+}
+.phrase-cover-inner .icon { color: var(--signal); }
+.phrase-cover:hover { background: color-mix(in srgb, var(--base) 40%, transparent); }
+
+.phrase-tools { display: flex; gap: 8px; margin-bottom: 18px; }
+.phrase-tools button { flex: 1; justify-content: center; border-radius: 9px; }
+
+.phrase-check { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.phrase-check label {
+  display: block; font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-dim); margin-bottom: 5px;
+}
+.phrase-check input {
+  width: 100%; font: inherit; font-family: var(--mono); font-size: 12px;
+  background: color-mix(in srgb, var(--raised) 72%, transparent); color: var(--ink);
+  border: 1px solid var(--line-strong); border-radius: 8px; padding: 9px;
+}
+.phrase-check input:focus {
+  outline: none; border-color: color-mix(in srgb, var(--signal) 65%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 12%, transparent);
+}
+
+/* The retry lives inside the message, so the fix is where the problem is. */
+.note-body { display: block; }
+.note-retry {
+  appearance: none; font: inherit; cursor: pointer;
+  display: block; margin-top: 9px;
+  background: color-mix(in srgb, var(--signal) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--signal) 40%, transparent);
+  color: var(--signal); border-radius: 8px; padding: 6px 12px; font-size: 12px;
+}
+.note-retry:hover { background: color-mix(in srgb, var(--signal) 24%, transparent); }
+
+/* The endpoint sits under every screen, not just unlock — a first run cannot
+   sign in at all if it points somewhere nothing is listening. */
+.gate-advanced.is-endpoint { margin-top: 16px; }
+
+/* ---------------------------------------------------------- acknowledge -- */
+/* The one gate left on the backup screen. A checkbox, like every other wallet,
+   because a quiz nobody can skip is a quiz people click past. */
+.ack {
+  display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+  margin-bottom: 16px; user-select: none;
+}
+.ack input { position: absolute; opacity: 0; width: 0; height: 0; }
+.ack-box {
+  flex: none; width: 18px; height: 18px; margin-top: 1px;
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  display: grid; place-items: center; color: transparent;
+  background: color-mix(in srgb, var(--raised) 70%, transparent);
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+.ack input:checked + .ack-box {
+  background: var(--signal); border-color: var(--signal); color: var(--on-signal);
+}
+.ack input:focus-visible + .ack-box {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 22%, transparent);
+}
+.ack-text { color: var(--ink-muted); font-size: 12px; line-height: 1.5; }
+.ack:hover .ack-text { color: var(--ink); }
+
+/* --------------------------------------------------------------- detect -- */
+/* Says what the pasted text was recognised as. Amber while it is not usable
+   yet, green once it is — so the operator is never guessing whether an import
+   will be accepted. */
+.detect {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 8px; font-size: 11px; color: var(--ink-dim);
+}
+.detect-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex: none;
+  background: var(--ink-faint); transition: background-color 0.15s ease;
+}
+.detect[data-kind="phrase"] .detect-dot,
+.detect[data-kind="key"] .detect-dot { background: var(--profit); }
+.detect[data-kind="phrase"] .detect-text,
+.detect[data-kind="key"] .detect-text { color: var(--profit); }
+
+/* ------------------------------------------------------------ lost keys -- */
+.gate-help {
+  color: var(--ink-muted); font-size: 12px; line-height: 1.55; margin-top: 12px;
+}
+.gate-help-list {
+  margin: 10px 0 0 16px; padding: 0;
+  color: var(--ink-muted); font-size: 12px; line-height: 1.6;
+}
+.gate-help-list li { margin-bottom: 4px; }
+.gate-help-list code { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
+.gate-help-actions { margin-top: 14px; }
+.gate-help-actions .gate-wide { border-radius: 10px; }
+
+/* -------------------------------------------------------------- identity -- */
+/* The avatar is derived from the address bytes, so a wrong wallet is visible
+   before the operator has read a single character of base58. */
+.avatar {
+  width: 34px; height: 34px; border-radius: 11px; flex: none;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.account-chip {
+  display: flex; align-items: center; gap: 12px;
+  border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--raised) 62%, transparent);
+  border-radius: 12px; padding: 11px 12px; margin-bottom: 20px;
+}
+.account-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.account-label {
+  font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim);
+}
+.account-address { font-size: 12.5px; color: var(--ink); }
+.chip-copy {
+  margin-left: auto; appearance: none; border: 0; cursor: pointer;
+  background: transparent; color: var(--ink-dim);
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px;
+}
+.chip-copy:hover { color: var(--signal); background: var(--overlay); }
+
+/* --------------------------------------------------------------- details -- */
+.gate-advanced { margin-top: 18px; }
+.gate-advanced summary {
+  cursor: pointer; list-style: none;
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-dim);
+}
+.gate-advanced summary::-webkit-details-marker { display: none; }
+.gate-advanced summary:hover { color: var(--ink-muted); }
+.gate-advanced input {
+  width: 100%; margin-top: 10px; font: inherit; font-family: var(--mono); font-size: 12px;
+  background: color-mix(in srgb, var(--raised) 72%, transparent); color: var(--ink);
+  border: 1px solid var(--line-strong); border-radius: 8px; padding: 9px 11px;
+}
+.gate-advanced input:focus { outline: none; border-color: var(--signal); }
+
+.gate-danger {
+  appearance: none; border: 0; background: transparent; font: inherit; cursor: pointer;
+  display: block; margin-top: 10px; padding: 0;
+  color: var(--ink-dim); font-size: 11px; text-align: left;
+}
+.gate-danger:hover { color: var(--loss); }
+
+/* The guarantees, as chips. Small print nobody reads becomes three facts. */
+.gate-foot {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line);
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 9px;
+  color: var(--ink-faint); font-size: 10px; letter-spacing: 0.02em;
+}
+.chip .icon { color: var(--ink-dim); }
+
+@media (max-width: 1080px) {
+  .gate-stage { grid-template-columns: minmax(0, 424px); justify-content: center; gap: 0; }
+  .gate-pitch { display: none; }
+}
+
+@media (max-height: 780px) {
+  .gate-pitch h2 { font-size: 27px; }
+  .gate-points { gap: 12px; margin-top: 20px; }
+}
+
+/* --------------------------------------------------------------- account -- */
+.rail-account {
+  display: flex; align-items: center; gap: 9px;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
+}
+.rail-account .avatar { width: 24px; height: 24px; border-radius: 7px; }
+.rail-account-meta { display: flex; flex-direction: column; min-width: 0; }
+.rail-address { font-size: 11px; color: var(--ink-muted); }
+.rail-key { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); }
+.rail-lock {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  margin-left: auto; display: grid; place-items: center;
+  width: 24px; height: 24px; border-radius: 6px; color: var(--ink-faint);
+}
+.rail-lock:hover { color: var(--ink-muted); background: var(--raised); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ------------------------------------------------------------- dashboard -- */
+/*
+ * Glass, done in this palette rather than the usual blue.
+ *
+ * The rest of the console is opaque panels drawn with hairlines. Here the
+ * surfaces are translucent and blurred over an ambient wash, which is what
+ * gives depth — but the wash is amber and near-black, so the dashboard reads as
+ * the same product as the site rather than a different app bolted on.
+ */
+
+.panel[data-panel="dashboard"] { overflow: hidden; }
+
+/* The light the glass has something to refract. Two soft pools, both off the
+   brand accent, well under the text contrast floor. */
+.glow {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(60% 45% at 18% 0%, color-mix(in srgb, var(--signal) 16%, transparent), transparent 70%),
+    radial-gradient(50% 40% at 88% 8%, color-mix(in srgb, var(--info) 14%, transparent), transparent 72%),
+    radial-gradient(70% 50% at 50% 100%, color-mix(in srgb, var(--signal-dim) 12%, transparent), transparent 75%);
+}
+.panel[data-panel="dashboard"] .panel-body { position: relative; z-index: 1; padding: 28px 28px 32px; }
+
+/* One padding for every card on this panel. The cards were each carrying their
+   own, which is most of what read as untidy. */
+.panel[data-panel="dashboard"] { --card-pad: 18px 20px; }
+
+.dash-greet { margin-bottom: 18px; }
+.dash-greet h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.03em; }
+.dash-greet p { color: var(--ink-muted); margin-top: 4px; font-size: 12.5px; }
+
+/* Stretch, not start: cards in the same row end at the same line instead of
+   leaving a ragged edge wherever one had less to say. */
+.dash-grid {
+  display: grid; grid-template-columns: repeat(12, 1fr);
+  gap: 14px; align-items: stretch;
+}
+
+/* The glass itself. One class, so every card refracts identically. */
+.glass {
+  position: relative;
+  display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--line-strong) 80%, transparent);
+  border-radius: 14px;
+  overflow: hidden;
+}
+/* The lit top edge. Without it a translucent panel reads as flat tint. */
+.glass::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--ink) 22%, transparent) 22%,
+    color-mix(in srgb, var(--ink) 22%, transparent) 78%,
+    transparent
+  );
+}
+
+/* ------------------------------------------------------------- balance -- */
+.dash-balance { grid-column: span 5; padding: var(--card-pad); }
+.dash-balance {
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--signal) 22%, transparent), transparent 55%),
+    color-mix(in srgb, var(--surface) 72%, transparent);
+  border-color: color-mix(in srgb, var(--signal) 26%, var(--line-strong));
+}
+.dash-card-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-muted);
+}
+.dash-card-head .icon { color: var(--signal); }
+.dash-card-head .spacer { margin-left: auto; }
+
+.dash-amount {
+  font-family: var(--mono); font-size: 30px; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 3px;
+}
+.dash-amount small { font-size: 18px; color: var(--ink-muted); }
+.dash-sub { color: var(--ink-muted); font-size: 12px; margin-top: 6px; font-family: var(--mono); }
+
+/* Pinned to the bottom, so the card reads as deliberate at whatever height the
+   row settles on rather than trailing off into empty space. */
+.dash-meta {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-top: auto; padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+}
+.dash-meta dt {
+  font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 4px;
+}
+.dash-meta dd {
+  display: flex; align-items: baseline; gap: 7px;
+  font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums;
+}
+
+.dash-actions { display: flex; gap: 9px; padding-top: 14px; }
+.dash-actions button {
+  flex: 1; height: 38px; border-radius: 9px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  appearance: none; font: inherit; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--line-strong) 90%, transparent);
+  background: color-mix(in srgb, var(--raised) 70%, transparent);
+  color: var(--ink);
+}
+.dash-actions button:hover { border-color: var(--ink-faint); }
+.dash-actions button.is-primary {
+  background: var(--signal); border-color: var(--signal); color: var(--on-signal); font-weight: 500;
+}
+.dash-actions button.is-primary:hover { background: var(--signal-hover); }
+
+/* --------------------------------------------------------------- tiles -- */
+.dash-tiles {
+  grid-column: span 7; display: grid;
+  grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 14px;
+}
+.dash-tile {
+  padding: 14px 16px; cursor: pointer;
+  display: flex; flex-direction: row; align-items: center; gap: 12px;
+}
+.dash-tile:hover { border-color: color-mix(in srgb, var(--signal) 30%, var(--line-strong)); }
+.dash-tile .market-logo, .dash-tile .market-logo-fallback { width: 30px; height: 30px; font-size: 11px; }
+.dash-tile-name { display: flex; flex-direction: column; min-width: 0; }
+.dash-tile-name b { font-weight: 500; font-size: 13px; }
+.dash-tile-name span { color: var(--ink-dim); font-size: 11px; font-family: var(--mono); }
+.dash-tile-figure { margin-left: auto; text-align: right; }
+.dash-tile-figure b { display: block; font-family: var(--mono); font-size: 13px; font-weight: 500; }
+.dash-spark { width: 84px; height: 30px; flex: none; }
+
+.delta {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums;
+}
+.delta.is-up { color: var(--profit); }
+.delta.is-down { color: var(--loss); }
+
+/* --------------------------------------------------------------- chart -- */
+.dash-chart { grid-column: span 8; padding: var(--card-pad); }
+.dash-chart-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.dash-chart-head .market-logo, .dash-chart-head .market-logo-fallback { width: 26px; height: 26px; }
+.dash-chart-head h2 { font-size: 15px; font-weight: 600; }
+.dash-price {
+  font-family: var(--mono); font-size: 24px; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; margin: 6px 0 12px;
+  display: flex; align-items: baseline; gap: 10px;
+}
+/* A bounded height, not flex:1. The chart sizes itself from this box, so a box
+   that sizes itself from the chart is a loop — one that grew the card to 3000px
+   before it settled. The card is as tall as its content; the card beside it
+   stretches to match. */
+.dash-chart .chart { height: clamp(240px, 30vh, 330px); margin: 0; }
+
+/* ------------------------------------------------------------ activity -- */
+.dash-activity { grid-column: span 4; padding: var(--card-pad); }
+/* Fills the row rather than guessing a height, and fades at the cut so a
+   half-visible row reads as "there is more" instead of a clipping bug. */
+/* flex-basis 0 so the list does not push the card taller: the row height comes
+   from the chart beside it, and the decisions scroll inside whatever that is. */
+.dash-activity .rows {
+  flex: 1 1 0; height: 0; min-height: 0; overflow-y: auto;
+  margin-right: -8px; padding-right: 8px;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+.act-row { display: flex; align-items: center; gap: 11px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.act-row:last-child { border-bottom: 0; }
+.act-mark {
+  width: 30px; height: 30px; border-radius: 9px; flex: none; display: grid; place-items: center;
+  background: var(--raised); border: 1px solid var(--line-strong); color: var(--ink-dim);
+}
+.act-row.is-buy .act-mark { color: var(--profit); }
+.act-row.is-sell .act-mark { color: var(--loss); }
+.act-meta { display: flex; flex-direction: column; min-width: 0; }
+.act-meta b { font-weight: 500; font-size: 12.5px; }
+.act-meta span { color: var(--ink-dim); font-size: 11px; }
+.act-figure { margin-left: auto; text-align: right; }
+.act-figure b { display: block; font-family: var(--mono); font-size: 12.5px; font-weight: 500; }
+.act-figure span { color: var(--ink-faint); font-size: 10.5px; font-family: var(--mono); }
+
+/* -------------------------------------------------------------- market -- */
+.dash-market { grid-column: span 12; padding: var(--card-pad); }
+.dash-tabs { display: flex; gap: 4px; margin-left: auto; }
+.dash-tabs button {
+  appearance: none; font: inherit; font-size: 11.5px; cursor: pointer;
+  background: transparent; color: var(--ink-muted);
+  border: 1px solid transparent; border-radius: 8px; padding: 5px 11px;
+}
+.dash-tabs button:hover { color: var(--ink); }
+.dash-tabs button.is-active {
+  background: color-mix(in srgb, var(--signal) 14%, transparent);
+  border-color: color-mix(in srgb, var(--signal) 30%, transparent);
+  color: var(--signal);
+}
+
+.dash-market table { width: 100%; }
+.dash-market th { padding-bottom: 11px; }
+.dash-market td { padding: 10px 14px 10px 0; border-bottom: 1px solid var(--line); }
+.dash-market tbody tr:last-child td { border-bottom: 0; }
+.dash-market tbody tr:hover { background: color-mix(in srgb, var(--raised) 55%, transparent); }
+.asset-cell { display: flex; align-items: center; gap: 10px; }
+.asset-cell .market-logo, .asset-cell .market-logo-fallback { width: 22px; height: 22px; font-size: 9px; }
+.asset-cell b { font-weight: 500; }
+.asset-cell span { color: var(--ink-dim); font-family: var(--mono); font-size: 11px; }
+
+@media (max-width: 1180px) {
+  .dash-balance, .dash-tiles, .dash-chart, .dash-activity { grid-column: span 12; }
+  .dash-tiles { grid-template-columns: 1fr 1fr; }
+  .dash-activity .rows { max-height: 320px; }
+}

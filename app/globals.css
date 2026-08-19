@@ -1,26 +1,129 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * MERIT Protocol — design tokens.
+ *
+ * The interface is a financial instrument panel, not a marketing page. The
+ * palette is near-neutral so that the only saturated pixels on screen carry
+ * meaning: amber for protocol state, green and red strictly for P&L.
+ */
+
+@theme {
+  /* Surfaces, darkest to lightest. */
+  --color-base: #08090b;
+  --color-surface: #0e1013;
+  --color-raised: #14171b;
+  --color-overlay: #1a1e23;
+
+  /* Hairlines. The grid is drawn with borders, never with shadows. */
+  --color-line: #1f242a;
+  --color-line-strong: #2c333b;
+
+  /* Text ramp. */
+  --color-ink: #e9ecef;
+  --color-ink-muted: #99a2ac;
+  --color-ink-dim: #626c77;
+  --color-ink-faint: #414a54;
+
+  /* Protocol accent. Used for verified state, focus and active nav only. */
+  --color-signal: #f0b429;
+  --color-signal-dim: #7a5c14;
+  --color-signal-wash: #1c1608;
+
+  /* P&L semantics. Never decorative. */
+  --color-profit: #2fbf71;
+  --color-profit-wash: #0b1f16;
+  --color-loss: #e5484d;
+  --color-loss-wash: #22100f;
+
+  /* Neutral informational state. */
+  --color-info: #6b95d6;
+  --color-info-wash: #0d1520;
+
+  --font-sans:
+    var(--font-plex-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-panel: 4px;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+  }
+
+  html {
+    background: var(--color-base);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--color-base);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    /* Tabular figures everywhere: columns of numbers must align. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: var(--color-signal);
+    color: #0a0b0d;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+  }
+
+  /* Terminal-style scrollbars: present, but not a design element. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
+    border: 3px solid var(--color-base);
+    border-radius: 999px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Faint engineering grid used behind the hero and section headers. */
+  .grid-field {
+    background-image:
+      linear-gradient(to right, var(--color-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-line) 1px, transparent 1px);
+    background-size: 64px 64px;
+    /* Fade it out toward the edges so it reads as texture, not chrome. */
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 20%, transparent 78%);
+  }
+
+  /* Hash strings and ids. */
+  .hash {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: -0.01em;
+    color: var(--color-ink-muted);
+    word-break: break-all;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

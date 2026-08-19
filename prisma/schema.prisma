@@ -1,0 +1,539 @@
+// MERIT Protocol — data model.
+//
+// Two rules shape this schema:
+//
+//  1. Proof records are append-only. Decision, Outcome, Proof, MerkleBatch and
+//     BlockchainAnchor rows are written once. Corrections are new Correction
+//     rows referencing the original, never edits. There is no soft-delete on a
+//     decision, because hiding a loss is the exact failure MERIT exists to stop.
+//
+//  2. Reputation is derived, never stored as truth. ReputationScore rows are a
+//     cache of a computation over verified records and can be rebuilt from them.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- identity --
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  /// Solana address this account signs in with. Null for accounts created
+  /// before wallet sign-in existed, and for any created by other means.
+  walletAddress String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agents  Agent[]
+  apiKeys ApiKey[]
+
+  @@index([createdAt])
+  @@map("users")
+}
+
+/// A one-time challenge for wallet sign-in. The client signs the nonce with the
+/// address's private key; the server accepts the signature exactly once, so a
+/// captured message cannot be replayed. Expired and used rows are worthless and
+/// may be pruned at any time.
+model WalletChallenge {
+  id        String   @id @default(cuid())
+  address   String
+  nonce     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([address, expiresAt])
+  @@map("wallet_challenges")
+}
+
+/// API credentials. Only a hash of the secret is stored; the plaintext is
+/// shown once at creation and is unrecoverable afterwards.
+model ApiKey {
+  id        String    @id @default(cuid())
+  userId    String
+  /// Public, non-secret identifier shown in the UI, e.g. "mk_live_8fa2".
+  prefix    String    @unique
+  /// SHA-256 of the full secret. Never the secret itself.
+  keyHash   String    @unique
+  name      String
+  scopes    String[]  @default(["decisions:write", "outcomes:write"])
+  lastUsedAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([keyHash])
+  @@index([revokedAt])
+  @@map("api_keys")
+}
+
+// ------------------------------------------------------------------ agents --
+
+enum AgentStatus {
+  ACTIVE
+  PAUSED
+  RETIRED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum RiskProfile {
+  CONSERVATIVE
+  MODERATE
+  AGGRESSIVE
+}
+
+model Agent {
+  id          String  @id @default(cuid())
+  /// Human-facing handle, e.g. "ALPHA-001".
+  slug        String  @unique
+  name        String
+  description String
+  ownerId     String
+  /// Wallet the agent signs with. Not custodial — MERIT never holds funds.
+  walletAddress String
+  venues      String[]
+  assets      String[]
+  chain       String  @default("solana")
+  riskProfile RiskProfile @default(MODERATE)
+
+  status             AgentStatus        @default(ACTIVE)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+
+  /// Seeded demo agents are flagged so the UI can label them, and so demo
+  /// performance is never presented as a live track record.
+  isDemo Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner             User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  strategies        Strategy[]
+  decisions         Decision[]
+  reputationScores  ReputationScore[]
+  qualifications    Qualification[]
+  events            ProtocolEvent[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([verificationStatus])
+  @@index([createdAt])
+  @@map("agents")
+}
+
+// -------------------------------------------------------------- strategies --
+
+model Strategy {
+  id          String   @id @default(cuid())
+  agentId     String
+  name        String
+  description String
+  createdAt   DateTime @default(now())
+
+  agent    Agent             @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  versions StrategyVersion[]
+
+  @@unique([agentId, name])
+  @@index([agentId])
+  @@map("strategies")
+}
+
+enum VersionStatus {
+  ACTIVE
+  SUPERSEDED
+  RETIRED
+}
+
+/// Immutable once written. A change of strategy or model produces a new row;
+/// historical performance always points at the exact version that produced it.
+model StrategyVersion {
+  id          String @id @default(cuid())
+  strategyId  String
+  /// Semantic version, e.g. "2.1.0".
+  version     String
+  description String
+
+  model        String
+  modelVersion String
+
+  /// SHA-256 over the canonicalised configuration. Detects an undisclosed swap.
+  configHash String
+  config     Json
+
+  /// Optional signature by the agent wallet over `configHash`.
+  creatorSignature String?
+
+  status    VersionStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+
+  strategy  Strategy   @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  decisions Decision[]
+
+  @@unique([strategyId, version])
+  @@index([strategyId])
+  @@index([configHash])
+  @@index([status])
+  @@map("strategy_versions")
+}
+
+// --------------------------------------------------------------- decisions --
+
+enum DecisionAction {
+  BUY
+  SELL
+  SHORT
+  COVER
+  HOLD
+  ABSTAIN
+}
+
+enum DecisionStatus {
+  /// Committed, outcome not yet revealed.
+  OPEN
+  /// Settled at a profit.
+  SUCCESS
+  /// Settled at a loss.
+  LOSS
+  /// Window closed without settlement.
+  EXPIRED
+  /// Withdrawn before execution.
+  CANCELLED
+  /// The agent evaluated and declined to act.
+  NO_GO
+  /// The agent explicitly abstained.
+  TRADE_ABSTENTION
+}
+
+/// Append-only. There is no update path for the committed fields; see the
+/// Correction model for how mistakes are handled.
+model Decision {
+  id                String @id @default(cuid())
+  agentId           String
+  strategyVersionId String
+
+  asset      String
+  action     DecisionAction
+  price      Decimal @db.Decimal(38, 12)
+  quantity   Decimal @db.Decimal(38, 12)
+  confidence Decimal @db.Decimal(5, 4)
+
+  /// Random per-decision salt. Keeps a published commitment from leaking the
+  /// decision to an observer before the reveal.
+  nonce String
+
+  /// SHA-256 commitment over the canonicalised decision. Written before the
+  /// outcome can be known.
+  commitmentHash String @unique
+
+  metadata Json?
+
+  status DecisionStatus @default(OPEN)
+  isDemo Boolean        @default(false)
+
+  /// When the agent made the call.
+  decidedAt  DateTime
+  /// When MERIT sealed the commitment.
+  committedAt DateTime @default(now())
+  /// Optional deadline after which the decision expires unsettled.
+  expiresAt  DateTime?
+
+  agent           Agent           @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  strategyVersion StrategyVersion @relation(fields: [strategyVersionId], references: [id])
+  outcome         Outcome?
+  proof           Proof?
+  corrections     Correction[]
+
+  @@index([agentId])
+  @@index([strategyVersionId])
+  @@index([status])
+  @@index([decidedAt])
+  @@index([committedAt])
+  @@index([commitmentHash])
+  @@index([agentId, status])
+  @@index([agentId, decidedAt])
+  @@map("decisions")
+}
+
+/// Revealed result. One per decision, written once.
+model Outcome {
+  id         String @id @default(cuid())
+  decisionId String @unique
+
+  entryPrice Decimal @db.Decimal(38, 12)
+  exitPrice  Decimal @db.Decimal(38, 12)
+  quantity   Decimal @db.Decimal(38, 12)
+  fees       Decimal @db.Decimal(38, 12)
+  slippage   Decimal @db.Decimal(38, 12)
+
+  grossPnl    Decimal @db.Decimal(38, 12)
+  realizedPnl Decimal @db.Decimal(38, 12)
+  roi         Decimal @db.Decimal(18, 8)
+  notional    Decimal @db.Decimal(38, 12)
+
+  holdingPeriodMs BigInt
+
+  /// SHA-256 over the outcome, bound to the decision's commitment.
+  outcomeHash String @unique
+
+  settledAt DateTime
+  createdAt DateTime @default(now())
+
+  decision Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([settledAt])
+  @@index([outcomeHash])
+  @@map("outcomes")
+}
+
+/// A correction never mutates the original record — it is a new, linked event.
+model Correction {
+  id         String   @id @default(cuid())
+  decisionId String
+  reason     String
+  detail     Json
+  createdAt  DateTime @default(now())
+
+  decision Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([decisionId])
+  @@map("corrections")
+}
+
+// ------------------------------------------------------------------ proofs --
+
+enum BatchStatus {
+  OPEN
+  SEALED
+  ANCHORED
+  FAILED
+}
+
+/// A set of commitments hashed into one Merkle tree.
+model MerkleBatch {
+  id         String @id @default(cuid())
+  /// Monotonic, human-referenceable batch number.
+  sequence   Int    @unique @default(autoincrement())
+  merkleRoot String @unique
+  leafCount  Int
+
+  status BatchStatus @default(OPEN)
+
+  sealedAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  proofs Proof[]
+  anchor BlockchainAnchor?
+
+  @@index([status])
+  @@index([merkleRoot])
+  @@index([createdAt])
+  @@map("merkle_batches")
+}
+
+/// A decision's inclusion proof against its batch root.
+model Proof {
+  id         String @id @default(cuid())
+  decisionId String @unique
+  batchId    String
+
+  /// Domain-tagged leaf digest for this decision's commitment.
+  leafHash  String
+  leafIndex Int
+  /// Ordered [{ sibling, side }] path from leaf to root.
+  path      Json
+
+  createdAt DateTime @default(now())
+
+  decision Decision    @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  batch    MerkleBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, leafIndex])
+  @@index([batchId])
+  @@index([leafHash])
+  @@map("proofs")
+}
+
+/// One chain write per batch root.
+model BlockchainAnchor {
+  id      String @id @default(cuid())
+  batchId String @unique
+
+  network    String
+  merkleRoot String
+  /// Null when no chain write occurred. Never populated with a synthetic value.
+  transactionHash String?
+  blockNumber     BigInt?
+  explorerUrl     String?
+
+  status AnchorStatus @default(PENDING)
+
+  anchoredAt   DateTime?
+  confirmedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  batch MerkleBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([transactionHash])
+  @@index([merkleRoot])
+  @@index([status])
+  @@index([network])
+  @@map("blockchain_anchors")
+}
+
+enum AnchorStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  LOCAL_ONLY
+}
+
+// -------------------------------------------------------------- reputation --
+
+/// Cached result of the reputation computation. Rebuildable from proofs.
+model ReputationScore {
+  id      String @id @default(cuid())
+  agentId String
+
+  score      Decimal @db.Decimal(5, 2)
+  rawScore   Decimal @db.Decimal(5, 2)
+  confidence Decimal @db.Decimal(6, 4)
+
+  performance Decimal @db.Decimal(5, 2)
+  risk        Decimal @db.Decimal(5, 2)
+  drawdown    Decimal @db.Decimal(5, 2)
+  consistency Decimal @db.Decimal(5, 2)
+  execution   Decimal @db.Decimal(5, 2)
+  integrity   Decimal @db.Decimal(5, 2)
+
+  /// Snapshot of the metric set the score was computed from.
+  metrics Json
+
+  sampleSize    Int
+  operatingDays Int
+
+  computedAt DateTime @default(now())
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([computedAt])
+  @@index([agentId, computedAt])
+  @@map("reputation_scores")
+}
+
+enum Tier {
+  UNVERIFIED
+  VERIFIED
+  BRONZE
+  SILVER
+  GOLD
+  ELITE
+}
+
+model Qualification {
+  id      String @id @default(cuid())
+  agentId String
+
+  tier     Tier
+  nextTier Tier?
+  /// Requirements still outstanding for the next tier.
+  unmet    Json
+
+  achievedAt DateTime @default(now())
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([tier])
+  @@index([agentId, achievedAt])
+  @@map("qualifications")
+}
+
+// ------------------------------------------------------------------ events --
+
+enum EventType {
+  AGENT_CREATED
+  STRATEGY_REGISTERED
+  VERSION_CREATED
+  DECISION_COMMITTED
+  TRADE_EXECUTED
+  OUTCOME_REVEALED
+  PROOF_BATCHED
+  MERKLE_ROOT_CREATED
+  ANCHOR_CONFIRMED
+  REPUTATION_UPDATED
+  CORRECTION_RECORDED
+  VERIFICATION_REQUESTED
+}
+
+/// Append-only protocol history. Never updated, never deleted.
+model ProtocolEvent {
+  id      String    @id @default(cuid())
+  type    EventType
+  agentId String?
+
+  /// Entity the event refers to (decision id, batch id, …).
+  subjectId String?
+  payload   Json
+
+  createdAt DateTime @default(now())
+
+  agent Agent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([agentId])
+  @@index([subjectId])
+  @@index([createdAt])
+  @@map("protocol_events")
+}
+
+/// Every third-party verification attempt, for transparency and abuse tracking.
+model VerificationRequest {
+  id        String   @id @default(cuid())
+  /// decision | commitment | agent | transaction
+  queryType String
+  query     String
+  valid     Boolean
+  /// Per-check results, so a failure can be explained rather than asserted.
+  checks    Json
+  createdAt DateTime @default(now())
+
+  @@index([queryType])
+  @@index([query])
+  @@index([createdAt])
+  @@map("verification_requests")
+}
+
+/// Authenticated write attempts against the API.
+model AuditLog {
+  id         String   @id @default(cuid())
+  apiKeyId   String?
+  actorLabel String
+  action     String
+  subjectId  String?
+  ip         String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([apiKeyId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

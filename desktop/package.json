@@ -1,0 +1,90 @@
+{
+  "name": "@merit-protocol/console",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MERIT operator console \u2014 commit decisions before they execute.",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "npm run build && node launch.mjs",
+    "typecheck": "tsc --noEmit",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:mac:arm64": "npm run build && electron-builder --mac --arm64",
+    "dist:mac:x64": "npm run build && electron-builder --mac --x64"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
+    "@nktkas/hyperliquid": "^0.33.3",
+    "ethers": "^6.17.0",
+    "lightweight-charts": "^5.2.1",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
+    "electron": "^33.0.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.24.0",
+    "typescript": "^5"
+  },
+  "author": "MERIT Protocol",
+  "homepage": "https://merit.trade",
+  "build": {
+    "appId": "trade.merit.console",
+    "productName": "MERIT",
+    "copyright": "MERIT Protocol",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "dist/main.js",
+      "dist/preload.js",
+      "dist/icon.png",
+      "dist/renderer/**/*",
+      "package.json",
+      "!node_modules/**/*"
+    ],
+    "asar": true,
+    "artifactName": "MERIT-${version}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.finance",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "darkModeSupport": true,
+      "extendInfo": {
+        "LSMinimumSystemVersion": "12.0"
+      },
+      "identity": null
+    },
+    "dmg": {
+      "title": "MERIT ${version}",
+      "contents": [
+        {
+          "x": 150,
+          "y": 180,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "asarUnpack": [
+      "dist/renderer/*.mp4"
+    ]
+  }
+}

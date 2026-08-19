@@ -1,0 +1,17 @@
+{
+  "name": "@merit-protocol/sdk",
+  "version": "0.1.0",
+  "description": "Record verifiable trading decisions with the MERIT Protocol.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": ["src"],
+  "sideEffects": false,
+  "license": "MIT",
+  "dependencies": {
+    "@noble/hashes": "^2.3.0"
+  }
+}

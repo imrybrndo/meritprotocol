@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      The sha256 allows exactly one inline stylesheet: the one Lightweight Charts
+      injects for its canvas containers. It is deliberately a hash rather than
+      'unsafe-inline' — this pins that single sheet instead of opening the door
+      to any inline style the page might ever be made to carry. If a library
+      upgrade changes the sheet, the TERMINAL reports the new hash to use.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'sha256-3pRED1tOXas1FXFoPb9TGCjmYe9XQsmO9OV23khV2nY='; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'none'"
+    />
+    <title>MERIT TERMINAL</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!--
+      Sign-in gate. Present in the document from the start rather than built on
+      demand, so the window never renders a TERMINAL the operator has not been
+      admitted to. renderer.ts reveals exactly one of these two.
+    -->
+    <div class="gate" id="gate" hidden>
+      <!-- src is set once the gate is actually shown; the file is large and
+           there is no reason to decode it for an operator who is already in. -->
+      <video class="gate-video" id="gate-video" muted loop playsinline></video>
+      <div class="gate-veil"></div>
+      <div class="gate-aurora" aria-hidden="true"><i></i><i></i></div>
+      <div class="gate-grain" aria-hidden="true"></div>
+
+      <div class="gate-stage">
+        <!-- Hidden on narrow windows: the card is the part that has a job. -->
+        <aside class="gate-pitch">
+          <div class="gate-brand">
+            <span class="brand-mark" data-icon="mark" data-icon-size="24"></span>
+            <span class="brand-text">MERIT<span class="brand-sub">TERMINAL</span></span>
+          </div>
+          <h2>Commit the call<br />before the outcome.</h2>
+          <p>
+            An operator TERMINAL for decisions that are sealed on-chain the moment they are
+            made — so a track record is something you can verify, not something you claim.
+          </p>
+          <ul class="gate-points">
+            <li data-icon="seal" data-icon-size="15">
+              <b>Sealed before execution</b>
+              <span>A commitment written after the fact proves nothing.</span>
+            </li>
+            <li data-icon="chain" data-icon-size="15">
+              <b>Anchored on chain</b>
+              <span>Merkle roots published publicly, verifiable without asking MERIT.</span>
+            </li>
+            <li data-icon="lock" data-icon-size="15">
+              <b>Keys stay on this machine</b>
+              <span>Encrypted at rest; only ever in memory while unlocked.</span>
+            </li>
+          </ul>
+        </aside>
+
+      <main class="gate-card" id="gate-card">
+        <div class="gate-card-head">
+          <div class="gate-brand is-compact">
+            <span class="brand-mark" data-icon="mark" data-icon-size="18"></span>
+            <span class="brand-text">MERIT<span class="brand-sub">TERMINAL</span></span>
+          </div>
+          <span class="gate-chain"><i class="pulse"></i><span>Ethereum</span></span>
+        </div>
+
+        <!-- No wallet on this machine yet. -->
+        <section class="gate-view" data-view="choose" hidden>
+          <h1>Create your wallet</h1>
+          <p class="gate-lede">
+            The TERMINAL signs with an EVM keypair generated on this machine. It is your
+            account and, once trading is wired up, the key that signs your fills — so it
+            never leaves the main process, and no server ever sees it.
+          </p>
+          <p class="gate-note" id="choose-note" hidden></p>
+
+          <div class="gate-actions">
+            <button class="act is-primary gate-submit" type="button" data-go="create">
+              <span>Create a new wallet</span>
+            </button>
+            <button class="act gate-wide" type="button" data-go="import">
+              <span>Import a seed phrase</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Local password for a new wallet. -->
+        <section class="gate-view" data-view="create" hidden>
+          <div class="gate-steps" data-step="1"><i></i><i></i></div>
+          <h1>Choose a password</h1>
+          <p class="gate-lede">
+            Invent one now — it is not issued anywhere and nothing else uses it. It encrypts
+            the wallet on this machine and unlocks the app each time you open it. It is not
+            your Phantom password, and it is not the backup: the seed phrase on the next
+            screen is.
+          </p>
+          <form id="create-form" novalidate>
+            <div class="gate-field">
+              <label for="create-pass">New password · at least 10 characters</label>
+              <div class="gate-secret">
+                <input id="create-pass" type="password" autocomplete="new-password"
+                       placeholder="at least 10 characters" />
+                <button type="button" class="gate-eye" data-reveals="create-pass"
+                        aria-label="Show the password" data-icon="reveal" data-icon-size="14"></button>
+              </div>
+            </div>
+            <div class="strength" id="create-strength" hidden>
+              <div class="strength-bar"><i></i><i></i><i></i><i></i></div>
+              <span class="strength-label"></span>
+            </div>
+            <div class="gate-field">
+              <label for="create-pass2">Confirm</label>
+              <input id="create-pass2" type="password" autocomplete="new-password" placeholder="again" />
+            </div>
+            <p class="gate-note" id="create-note" hidden></p>
+            <button class="act is-primary gate-submit" type="submit"><span>Generate wallet</span></button>
+            <button class="gate-back" type="button" data-go="choose">Back</button>
+          </form>
+        </section>
+
+        <!-- The one time the phrase is ever shown. -->
+        <section class="gate-view" data-view="backup" hidden>
+          <div class="gate-steps" data-step="2"><i></i><i></i></div>
+          <h1>Write these twelve words down</h1>
+          <p class="gate-lede">
+            This is the only backup of the wallet. Anyone holding it holds the account;
+            nobody who loses it can recover it — not you, and not MERIT.
+          </p>
+          <div class="phrase-wrap">
+            <div class="phrase" id="phrase"></div>
+            <button class="phrase-cover" id="phrase-cover" type="button">
+              <span class="phrase-cover-inner" data-icon="reveal" data-icon-size="15">
+                <span>Tap to reveal · make sure nobody is watching</span>
+              </span>
+            </button>
+          </div>
+          <div class="phrase-tools">
+            <button class="ghost" type="button" id="phrase-reveal">
+              <span>Reveal</span>
+            </button>
+            <button class="ghost" type="button" id="phrase-copy" data-icon="copy" data-icon-size="13">
+              <span>Copy</span>
+            </button>
+          </div>
+          <p class="gate-note" id="create-note-backup" hidden></p>
+
+          <label class="ack">
+            <input type="checkbox" id="backup-ack" />
+            <span class="ack-box" data-icon="check" data-icon-size="11"></span>
+            <span class="ack-text">I have saved these words somewhere only I can reach.</span>
+          </label>
+
+          <button class="act is-primary gate-submit" type="button" id="backup-done" disabled>
+            <span>Create wallet and sign in</span>
+          </button>
+          <button class="gate-back" type="button" data-go="confirm">
+            Quiz me on three words first
+          </button>
+        </section>
+
+        <!-- Proof that it was actually written down. -->
+        <section class="gate-view" data-view="confirm" hidden>
+          <div class="gate-steps" data-step="2"><i></i><i></i></div>
+          <h1>Confirm your backup</h1>
+          <p class="gate-lede">Type these three words from the phrase you just saved.</p>
+          <form id="confirm-form" novalidate>
+            <div class="phrase-check" id="phrase-check"></div>
+            <p class="gate-note" id="confirm-note" hidden></p>
+            <button class="act is-primary gate-submit" type="submit"><span>Confirm and sign in</span></button>
+            <button class="gate-back" type="button" data-go="backup">Show the phrase again</button>
+          </form>
+        </section>
+
+        <!-- Restore an existing wallet. -->
+        <section class="gate-view" data-view="import" hidden>
+          <h1>Import a wallet</h1>
+          <p class="gate-lede">
+            A seed phrase or a private key — whichever you have. Both restore the same
+            address they came from, on the standard path m/44'/60'/0'/0/0.
+          </p>
+          <form id="import-form" novalidate>
+            <div class="gate-field">
+              <label for="import-phrase">Seed phrase or private key</label>
+              <textarea id="import-phrase" rows="3" spellcheck="false"
+                        placeholder="twelve words, or a 0x private key"></textarea>
+              <p class="detect" id="import-detect">
+                <span class="detect-dot"></span>
+                <span class="detect-text">12 or 24 words · 0x private key</span>
+              </p>
+            </div>
+            <div class="gate-field">
+              <label for="import-pass">New password for this machine</label>
+              <input id="import-pass" type="password" autocomplete="new-password"
+                     placeholder="you choose this — at least 10 characters" />
+            </div>
+            <p class="gate-note" id="import-note" hidden></p>
+            <button class="act is-primary gate-submit" type="submit"><span>Import and sign in</span></button>
+            <button class="gate-back" type="button" data-go="choose">Back</button>
+          </form>
+        </section>
+
+        <!-- Wallet exists, locked. -->
+        <section class="gate-view" data-view="unlock" hidden>
+          <div class="account-chip">
+            <span class="avatar" id="unlock-avatar"></span>
+            <span class="account-meta">
+              <span class="account-label">Wallet on this machine</span>
+              <span class="account-address mono" id="unlock-address"></span>
+            </span>
+            <button class="chip-copy" id="copy-address" type="button" aria-label="Copy the address"
+                    data-icon="copy" data-icon-size="13"></button>
+          </div>
+          <h1>Unlock to sign in</h1>
+          <p class="gate-lede">
+            The password you set on this machine decrypts the key, which then signs a
+            one-time challenge from the deployment. The signature is what authenticates you.
+          </p>
+          <form id="unlock-form" novalidate>
+            <div class="gate-field">
+              <label for="unlock-pass">Password for this machine</label>
+              <div class="gate-secret">
+                <input id="unlock-pass" type="password" autocomplete="current-password" />
+                <button type="button" class="gate-eye" data-reveals="unlock-pass"
+                        aria-label="Show the password" data-icon="reveal" data-icon-size="14"></button>
+              </div>
+            </div>
+            <p class="gate-note" id="unlock-note" hidden></p>
+            <button class="act is-primary gate-submit" type="submit"><span>Unlock and sign in</span></button>
+          </form>
+          <details class="gate-advanced">
+            <summary>Forgotten your password?</summary>
+            <p class="gate-help">
+              It cannot be recovered. Nothing on this machine stores it — the wallet file
+              holds only ciphertext, and there is no second copy to fall back on. Two ways
+              back to the same address:
+            </p>
+            <ol class="gate-help-list">
+              <li>Import its seed phrase, if you wrote one down.</li>
+              <li>Import its private key, if you hold it elsewhere — MetaMask and Rabby
+                  both export one under account details.</li>
+            </ol>
+            <p class="gate-help">
+              Either restores the identical address under a new password. Without one of
+              them, the only option left is a new wallet.
+            </p>
+            <div class="gate-help-actions">
+              <button class="act gate-wide" type="button" data-go="import">
+                <span>Import a phrase or key</span>
+              </button>
+              <button class="gate-danger" type="button" id="forget-wallet">
+                Remove this wallet and start over
+              </button>
+            </div>
+          </details>
+
+        </section>
+
+        <details class="gate-advanced is-endpoint">
+          <summary>Deployment</summary>
+          <input id="gate-url" type="url" spellcheck="false" placeholder="https://merit.example" />
+        </details>
+
+        <div class="gate-foot">
+          <span class="chip" data-icon="lock" data-icon-size="11"><span>scrypt · AES-256-GCM</span></span>
+          <span class="chip" data-icon="seal" data-icon-size="11"><span>Non-custodial</span></span>
+          <span class="chip" data-icon="chain" data-icon-size="11"><span>BIP-39</span></span>
+        </div>
+      </main>
+      </div>
+    </div>
+
+    <!--
+      Re-authentication sheet. Electron has no window.prompt, and a secret this
+      consequential should not be behind a browser dialog anyway: it needs the
+      warning next to the field.
+    -->
+    <div class="sheet" id="sheet" hidden>
+      <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+        <h2 id="sheet-title"></h2>
+        <p class="sheet-warn" id="sheet-warn" data-icon="alert" data-icon-size="14"><span></span></p>
+
+        <form id="sheet-form" novalidate>
+          <div class="gate-field">
+            <label for="sheet-pass">Password for this machine</label>
+            <div class="gate-secret">
+              <input id="sheet-pass" type="password" autocomplete="current-password" />
+              <button type="button" class="gate-eye" data-reveals="sheet-pass"
+                      aria-label="Show the password" data-icon="reveal" data-icon-size="14"></button>
+            </div>
+          </div>
+          <p class="gate-note" id="sheet-note" hidden></p>
+          <div class="sheet-actions">
+            <button class="act" type="button" id="sheet-cancel">Cancel</button>
+            <button class="act is-primary" type="submit" id="sheet-submit">Reveal</button>
+          </div>
+        </form>
+
+        <div class="sheet-reveal" id="sheet-reveal" hidden>
+          <div id="sheet-secret"></div>
+          <div class="sheet-tools">
+            <button class="ghost" type="button" id="sheet-copy" data-icon="copy" data-icon-size="13">
+              <span>Copy</span>
+            </button>
+            <button class="act is-primary" type="button" id="sheet-done">Done</button>
+          </div>
+          <p class="sheet-timer" id="sheet-timer"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="shell" hidden>
+      <aside class="rail">
+        <div class="brand">
+          <span class="brand-mark" data-icon="mark" data-icon-size="19"></span>
+          <span class="brand-text">MERIT<span class="brand-sub">TERMINAL</span></span>
+        </div>
+        <nav id="nav">
+          <button class="nav-item is-active" data-panel="dashboard" data-icon="dashboard" data-icon-size="15">
+            <span>Dashboard</span>
+          </button>
+          <button class="nav-item" data-panel="chat" data-icon="chat" data-icon-size="15">
+            <span>Chat</span>
+          </button>
+          <button class="nav-item" data-panel="agents" data-icon="agents" data-icon-size="15">
+            <span>Agents</span>
+          </button>
+          <button class="nav-item" data-panel="perps" data-icon="perps" data-icon-size="15">
+            <span>Perps</span>
+          </button>
+          <button class="nav-item" data-panel="lp" data-icon="lp" data-icon-size="15">
+            <span>Liquidity</span>
+          </button>
+          <button class="nav-item" data-panel="settings" data-icon="settings" data-icon-size="15">
+            <span>Settings</span>
+          </button>
+        </nav>
+        <div class="rail-foot">
+          <div class="status-line">
+            <span class="dot" id="health-dot"></span>
+            <span id="health-text">checking…</span>
+          </div>
+          <div class="rail-account" id="rail-account" hidden>
+            <span class="avatar" id="rail-avatar"></span>
+            <span class="rail-account-meta">
+              <span class="rail-address mono" id="rail-address"></span>
+              <span class="rail-key" id="account-key"></span>
+            </span>
+            <button class="rail-lock" id="sign-out" type="button" title="Lock and sign out"
+                    aria-label="Lock and sign out" data-icon="signOut" data-icon-size="13"></button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="stage">
+        <!-- Dashboard -->
+        <section class="panel is-active" data-panel="dashboard">
+          <div class="glow" aria-hidden="true"></div>
+          <div class="panel-body" id="dashboard-body"></div>
+        </section>
+
+        <!-- Chat -->
+        <section class="panel" data-panel="chat">
+          <header class="panel-head is-chat">
+            <div>
+              <h1>Chat</h1>
+              <p>Every decision is sealed on MERIT before you execute it.</p>
+            </div>
+            <button class="ghost" id="new-chat" type="button" data-icon="plus" data-icon-size="14">
+              <span>New conversation</span>
+            </button>
+          </header>
+
+          <div class="transcript" id="transcript">
+            <div class="welcome" id="welcome">
+              <h2>Think a call through.</h2>
+              <p>
+                When you want it on the record, the agent seals it as a commitment. You approve
+                first, and you execute afterwards in your own wallet — the protocol never touches
+                your funds.
+              </p>
+              <div class="suggestions" id="suggestions">
+                <button type="button" data-fill="Which agents are registered, and what are they trading?" data-icon-end="next" data-icon-size="13">
+                  <span>Which agents are registered?</span>
+                </button>
+                <button type="button" data-fill="What exposure is currently open and unsettled?" data-icon-end="next" data-icon-size="13">
+                  <span>What is open right now?</span>
+                </button>
+                <button type="button" data-fill="Walk me through committing an ETH call before I execute it." data-icon-end="next" data-icon-size="13">
+                  <span>Commit an ETH call</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="approvals"></div>
+
+          <form class="composer" id="composer">
+            <div class="composer-box">
+              <textarea
+                id="prompt"
+                rows="1"
+                placeholder="Ask about an agent, review open exposure, or think through a call…"
+              ></textarea>
+              <button
+                type="submit"
+                id="send"
+                aria-label="Send"
+                data-icon="send"
+                data-icon-size="15"
+              ></button>
+            </div>
+            <p class="composer-hint">
+              <kbd>Enter</kbd> to send · <kbd>Shift</kbd><kbd>Enter</kbd> for a new line
+            </p>
+          </form>
+        </section>
+
+        <!-- Agents -->
+        <section class="panel" data-panel="agents">
+          <header class="panel-head">
+            <h1>Agents</h1>
+            <p>Registered on this deployment.</p>
+          </header>
+          <div class="panel-body" id="agents-body"><div class="empty"><p>Loading…</p></div></div>
+        </section>
+
+        <!-- Perps -->
+        <section class="panel" data-panel="perps">
+          <header class="panel-head is-chat">
+            <div>
+              <h1>Perps</h1>
+            </div>
+            <div class="timeframes" id="timeframes" role="group" aria-label="Candle timeframe">
+              <button type="button" data-tf="5m">5m</button>
+              <button type="button" data-tf="15m">15m</button>
+              <button type="button" class="is-active" data-tf="1h">1h</button>
+              <button type="button" data-tf="4h">4h</button>
+              <button type="button" data-tf="1d">1d</button>
+            </div>
+          </header>
+
+          <div class="perps">
+            <aside class="market-rail">
+              <div class="search-field" data-icon="search" data-icon-size="13">
+                <input
+                  id="market-search"
+                  type="search"
+                  placeholder="Search markets…"
+                  aria-label="Search markets"
+                />
+              </div>
+              <div class="market-rows" id="market-rows"></div>
+            </aside>
+            <div class="market-view" id="market-view">
+              <div class="empty"><p>Loading markets…</p></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- LP -->
+        <section class="panel" data-panel="lp">
+          <header class="panel-head">
+            <h1>Liquidity</h1>
+            <p>Positions reported by the connected venue adapter.</p>
+          </header>
+          <div class="panel-body" id="lp-body"><div class="empty"><p>Loading…</p></div></div>
+        </section>
+
+        <!-- Settings -->
+        <section class="panel" data-panel="settings">
+          <header class="panel-head">
+            <h1>Settings</h1>
+            <p>Credentials are encrypted by the OS keyring and never reach this window.</p>
+          </header>
+          <div class="panel-body" id="settings-body"></div>
+        </section>
+      </main>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>
