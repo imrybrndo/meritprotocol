@@ -8,8 +8,14 @@
  * source instead.
  *
  * Configure by pointing each architecture at a hosted artefact: a GitHub
- * release asset, an object-store URL, or a file dropped in `public/downloads/`
- * and referenced as `/downloads/<name>.dmg`.
+ * release asset or an object-store URL. It must be absolute.
+ *
+ * Site-relative paths are rejected on purpose, and the reason is a failure that
+ * already happened: `/downloads/x.dmg` looks configured, renders a button, and
+ * then 404s in production — because disk images are excluded from both Git and
+ * the deployment, so they exist on the developer's machine and nowhere else. A
+ * path that can only resolve on localhost is worse than no path at all, since
+ * it is indistinguishable from a working one until a visitor clicks it.
  */
 
 export type MacArch = "arm64" | "x64";
@@ -40,13 +46,35 @@ function env(name: string): string | null {
   return value ? value : null;
 }
 
+let warned = false;
+
+/**
+ * An artefact URL, or null. Only absolute http(s) URLs count as published.
+ */
+function artefactUrl(name: string): string | null {
+  const value = env(name);
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+
+  if (!warned) {
+    warned = true;
+    console.warn(
+      `[desktop] ${name} is set to "${value}", which is not an absolute URL. ` +
+        "Disk images are not served from the deployment, so a site-relative path " +
+        "404s in production. Publish the build and point this at the hosted file. " +
+        "Treating it as unpublished.",
+    );
+  }
+  return null;
+}
+
 export function getDesktopRelease(): DesktopRelease {
   const builds: DesktopBuild[] = [
     {
       arch: "arm64",
       label: "Apple Silicon",
       hardware: "M1 and later",
-      url: env("MERIT_DESKTOP_MAC_ARM64_URL"),
+      url: artefactUrl("MERIT_DESKTOP_MAC_ARM64_URL"),
       size: env("MERIT_DESKTOP_MAC_ARM64_SIZE"),
       sha256: env("MERIT_DESKTOP_MAC_ARM64_SHA256"),
     },
@@ -54,7 +82,7 @@ export function getDesktopRelease(): DesktopRelease {
       arch: "x64",
       label: "Intel",
       hardware: "x86-64 Macs",
-      url: env("MERIT_DESKTOP_MAC_X64_URL"),
+      url: artefactUrl("MERIT_DESKTOP_MAC_X64_URL"),
       size: env("MERIT_DESKTOP_MAC_X64_SIZE"),
       sha256: env("MERIT_DESKTOP_MAC_X64_SHA256"),
     },

@@ -7,6 +7,21 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MeritMark } from "./logo";
 
+/**
+ * X publishes no mark in lucide, and the glyph is a letterform rather than an
+ * icon — so it is drawn here at the same 24-unit grid as everything else in the
+ * set, and inherits colour the same way.
+ */
+function XMark() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+const SOCIALS = [{ href: "https://x.com/meritproto", label: "MERIT on X", icon: <XMark /> }] as const;
+
 const NAV = [
   { href: "/agents", label: "Agents" },
   { href: "/leaderboard", label: "Leaderboard" },
@@ -29,7 +44,7 @@ export function SiteHeader() {
           href="/"
           className="flex items-center gap-2 text-signal transition-opacity hover:opacity-80"
         >
-          <MeritMark size={19} />
+          <MeritMark size={19} gradientId="mark-header" />
           <span className="text-sm font-semibold tracking-[0.06em] text-ink">MERIT</span>
         </Link>
 
@@ -100,7 +115,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-sm">
             <div className="flex items-center gap-2 text-signal">
-              <MeritMark size={17} />
+              <MeritMark size={17} gradientId="mark-footer" />
               <span className="text-xs font-semibold tracking-[0.06em] text-ink">
                 MERIT
               </span>
@@ -108,6 +123,25 @@ export function SiteFooter() {
             <p className="mt-2 text-xs leading-relaxed text-ink-dim">
               The verifiable reputation layer for autonomous agents.
             </p>
+
+            <div className="mt-4 flex items-center gap-2">
+              {SOCIALS.map((social) => (
+                <a
+                  key={social.href}
+                  href={social.href}
+                  target="_blank"
+                  // noreferrer alongside noopener: the tab opened here should
+                  // carry neither a handle back to this window nor where it
+                  // came from.
+                  rel="noopener noreferrer"
+                  aria-label={social.label}
+                  title={social.label}
+                  className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-line-strong text-ink-dim transition-colors hover:border-ink-dim hover:text-ink"
+                >
+                  {social.icon}
+                </a>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-x-10 gap-y-1 text-xs sm:grid-cols-3">

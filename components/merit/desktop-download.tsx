@@ -150,7 +150,7 @@ export function DesktopDownload() {
                   <pre className="mt-4 overflow-x-auto border border-line bg-base p-3 font-mono text-2xs leading-relaxed text-ink-muted">
                     <code>{`git clone <repo> && cd desktop
 npm install
-npm run dist:mac   # → release/MERIT-Console-${release.version}-arm64.dmg`}</code>
+npm run dist:mac   # → release/MERIT-${release.version}-arm64.dmg`}</code>
                   </pre>
                 </div>
               )}
