@@ -22,7 +22,7 @@ export const runtime = "nodejs";
  */
 export async function POST(request: NextRequest) {
   try {
-    const limit = rateLimit(`verify:${clientIdentifier(request)}`, 60);
+    const limit = await rateLimit(`verify:${clientIdentifier(request)}`, 60);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const body = await parseBody(request, verifySchema);
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 /** GET /api/v1/verify?query=… — same check, link-friendly. */
 export async function GET(request: NextRequest) {
   try {
-    const limit = rateLimit(`verify:${clientIdentifier(request)}`, 60);
+    const limit = await rateLimit(`verify:${clientIdentifier(request)}`, 60);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const query = request.nextUrl.searchParams.get("query");

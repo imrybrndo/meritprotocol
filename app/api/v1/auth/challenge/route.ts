@@ -27,7 +27,7 @@ export const runtime = "nodejs";
  */
 export async function POST(request: NextRequest) {
   try {
-    const limit = rateLimit(`auth:challenge:${clientIdentifier(request)}`, 30);
+    const limit = await rateLimit(`auth:challenge:${clientIdentifier(request)}`, 30);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const body = await parseBody(request, walletChallengeSchema);

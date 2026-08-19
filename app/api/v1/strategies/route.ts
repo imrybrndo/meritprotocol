@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const key = await authenticate(request);
     requireScope(key, "strategies:write");
 
-    const limit = rateLimit(`strategies:${key.id}`, 120);
+    const limit = await rateLimit(`strategies:${key.id}`, 120);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const raw = (await request.clone().json().catch(() => ({}))) as Record<string, unknown>;

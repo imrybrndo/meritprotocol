@@ -11,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const limit = rateLimit(`proof-verify:${clientIdentifier(request)}`, 60);
+    const limit = await rateLimit(`proof-verify:${clientIdentifier(request)}`, 60);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const { id } = await params;

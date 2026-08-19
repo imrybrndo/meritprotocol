@@ -15,7 +15,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const limit = rateLimit(`history:${clientIdentifier(request)}`);
+    const limit = await rateLimit(`history:${clientIdentifier(request)}`);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const { id } = await params;

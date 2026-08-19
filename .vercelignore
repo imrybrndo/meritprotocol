@@ -1,0 +1,15 @@
+# The desktop app is built and shipped separately — none of it belongs in a
+# deployment. `desktop/` alone is ~1 GB with its Electron binaries and release
+# artefacts, and the web app never imports from it.
+desktop
+
+# Binaries are served from a release host, not from the deployment. Uploading a
+# 250 MB pair of disk images on every deploy is slow, and Git ignores them
+# anyway, so a CLI deploy from a working copy is the only way they could sneak
+# in. Point MERIT_DESKTOP_MAC_*_URL at the hosted artefacts instead.
+public/downloads
+
+# Local-only.
+.env
+.env.*
+tests

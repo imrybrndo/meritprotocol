@@ -7,6 +7,7 @@ import { ZodError, type ZodType } from "zod";
 import { DatabaseNotConfiguredError } from "../db";
 import { ProtocolError } from "../services/decisions";
 import { ForbiddenError, UnauthorizedError } from "./auth";
+import { consume, type RateLimitResult } from "./rate-limit";
 
 export interface ApiErrorBody {
   error: { code: string; message: string; details?: unknown };
@@ -76,48 +77,21 @@ export async function parseBody<T>(request: Request, schema: ZodType<T>): Promis
 
 /* ------------------------------------------------------------ rate limits -- */
 
-interface Bucket {
-  count: number;
-  resetAt: number;
-}
-
 /**
  * Fixed-window limiter.
  *
- * In-process by design for the MVP: it is correct for a single instance and has
- * no external dependency. A multi-instance deployment should back this with
- * Redis — the interface below is what would be swapped.
+ * The counting lives in rate-limit.ts, which uses Redis when one is configured
+ * and process memory when it is not. This stays the only entry point so the
+ * routes never have to know which.
  */
-const buckets = new Map<string, Bucket>();
+export type { RateLimitResult };
 
-export interface RateLimitResult {
-  allowed: boolean;
-  limit: number;
-  remaining: number;
-  resetAt: number;
-}
-
-export function rateLimit(
+export async function rateLimit(
   identifier: string,
   limit = 120,
   windowMs = 60_000,
-): RateLimitResult {
-  const now = Date.now();
-  const existing = buckets.get(identifier);
-
-  if (!existing || existing.resetAt <= now) {
-    const bucket = { count: 1, resetAt: now + windowMs };
-    buckets.set(identifier, bucket);
-    return { allowed: true, limit, remaining: limit - 1, resetAt: bucket.resetAt };
-  }
-
-  existing.count += 1;
-  return {
-    allowed: existing.count <= limit,
-    limit,
-    remaining: Math.max(0, limit - existing.count),
-    resetAt: existing.resetAt,
-  };
+): Promise<RateLimitResult> {
+  return consume(identifier, limit, windowMs);
 }
 
 export function rateLimitHeaders(result: RateLimitResult): Record<string, string> {

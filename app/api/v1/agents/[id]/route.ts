@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const limit = rateLimit(`agent:${clientIdentifier(request)}`);
+    const limit = await rateLimit(`agent:${clientIdentifier(request)}`);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const { id } = await params;

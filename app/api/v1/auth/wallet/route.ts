@@ -40,7 +40,7 @@ const CONSOLE_KEY_PREFIX = "Console · ";
 
 export async function POST(request: NextRequest) {
   try {
-    const limit = rateLimit(`auth:wallet:${clientIdentifier(request)}`, 20);
+    const limit = await rateLimit(`auth:wallet:${clientIdentifier(request)}`, 20);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const body = await parseBody(request, walletSignInSchema);

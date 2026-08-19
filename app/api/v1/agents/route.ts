@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const key = await authenticate(request);
     requireScope(key, "agents:write");
 
-    const limit = rateLimit(`agents:${key.id}`, 60);
+    const limit = await rateLimit(`agents:${key.id}`, 60);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const body = await parseBody(request, createAgentSchema);
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 /** GET /api/v1/agents — public, filterable agent index. */
 export async function GET(request: NextRequest) {
   try {
-    const limit = rateLimit(`agents:list:${clientIdentifier(request)}`);
+    const limit = await rateLimit(`agents:list:${clientIdentifier(request)}`);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const query = listAgentsSchema.parse(

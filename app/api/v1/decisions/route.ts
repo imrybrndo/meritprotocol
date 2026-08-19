@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const key = await authenticate(request);
     requireScope(key, "decisions:write");
 
-    const limit = rateLimit(`decisions:${key.id}`, 600);
+    const limit = await rateLimit(`decisions:${key.id}`, 600);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const body = await parseBody(request, createDecisionSchema);
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 /** GET /api/v1/decisions — public, paginated decision feed. */
 export async function GET(request: NextRequest) {
   try {
-    const limit = rateLimit(`decisions:list:${clientIdentifier(request)}`);
+    const limit = await rateLimit(`decisions:list:${clientIdentifier(request)}`);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const params = request.nextUrl.searchParams;

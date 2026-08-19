@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const key = await authenticate(request);
     requireScope(key, "outcomes:write");
 
-    const limit = rateLimit(`outcomes:${key.id}`, 600);
+    const limit = await rateLimit(`outcomes:${key.id}`, 600);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const body = await parseBody(request, createOutcomeSchema);

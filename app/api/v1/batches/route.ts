@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const key = await authenticate(request);
     requireScope(key, "batches:write");
 
-    const limit = rateLimit(`batches:${key.id}`, 30);
+    const limit = await rateLimit(`batches:${key.id}`, 30);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const result = await sealPendingBatch(getPrisma());
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 /** GET /api/v1/batches — recent batches and their anchors. */
 export async function GET(request: NextRequest) {
   try {
-    const limit = rateLimit(`batches:list:${clientIdentifier(request)}`);
+    const limit = await rateLimit(`batches:list:${clientIdentifier(request)}`);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const batches = await getPrisma().merkleBatch.findMany({

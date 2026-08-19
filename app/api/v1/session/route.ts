@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     // Limited before authentication, unlike the write routes: this is the one
     // endpoint whose whole purpose is to answer "is this key good?", so the
     // rejection path is the one worth throttling.
-    const limit = rateLimit(`session:${clientIdentifier(request)}`, 60);
+    const limit = await rateLimit(`session:${clientIdentifier(request)}`, 60);
     if (!limit.allowed) return tooManyRequests(limit);
 
     const key = await authenticate(request);
