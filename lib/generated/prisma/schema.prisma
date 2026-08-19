@@ -25,8 +25,8 @@ model User {
   id            String   @id @default(cuid())
   email         String   @unique
   name          String?
-  /// Solana address this account signs in with. Null for accounts created
-  /// before wallet sign-in existed, and for any created by other means.
+  /// EVM address this account signs in with, checksummed. Null for accounts
+  /// created before wallet sign-in existed, and for any created by other means.
   walletAddress String?  @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -110,7 +110,7 @@ model Agent {
   walletAddress String
   venues        String[]
   assets        String[]
-  chain         String      @default("solana")
+  chain         String      @default("robinhood")
   riskProfile   RiskProfile @default(MODERATE)
 
   status             AgentStatus        @default(ACTIVE)

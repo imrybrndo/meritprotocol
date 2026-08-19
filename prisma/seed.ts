@@ -233,7 +233,7 @@ async function main() {
         walletAddress: `Demo${randomBytes(20).toString("hex").slice(0, 40)}`,
         venues: blueprint.venues,
         assets: blueprint.assets,
-        chain: "solana",
+        chain: "robinhood",
         riskProfile: blueprint.risk,
         status: "ACTIVE",
         verificationStatus: "VERIFIED",

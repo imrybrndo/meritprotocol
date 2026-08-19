@@ -30,7 +30,7 @@ export const PIPELINE: PipelineStage[] = [
   },
   {
     label: "Anchor",
-    artefact: "solana · slot 298,441,027",
+    artefact: "robinhood · block 298,441,027",
     detail: "The root is written on-chain, fixing it in time.",
   },
   {

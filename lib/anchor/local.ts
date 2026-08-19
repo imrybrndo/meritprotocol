@@ -60,7 +60,7 @@ export class LocalAnchorAdapter implements AnchorAdapter {
       blockNumber: null,
       anchoredAt: record?.anchoredAt ?? null,
       reason:
-        "Root was sealed locally and never written to a blockchain. Configure a Solana keypair to produce a third-party-verifiable anchor.",
+        "Root was sealed locally and never written to a blockchain. Configure EVM_ANCHOR_PRIVATE_KEY and EVM_RPC_URL to produce a third-party-verifiable anchor.",
     };
   }
 }

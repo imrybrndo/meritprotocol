@@ -47,7 +47,7 @@ export default async function VerifyPage({
             order, and compare against the anchored root. The algorithm is
             SHA-256 with domain-separated leaf and node tags, and unpaired nodes
             are promoted rather than duplicated. No MERIT code is required — and
-            the on-chain memo can be read straight from any Solana RPC.
+            the on-chain payload can be read straight from any RPC endpoint.
           </p>
         </div>
       </Panel>

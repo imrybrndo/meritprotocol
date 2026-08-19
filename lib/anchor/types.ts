@@ -24,7 +24,7 @@ export type AnchorStatus =
   | "LOCAL_ONLY";
 
 export interface AnchorReceipt {
-  /** Chain identifier, e.g. "solana:devnet" or "local". */
+  /** Chain identifier, e.g. "robinhood:1234" or "local". */
   network: string;
   /** The anchored Merkle root. */
   root: Hash;

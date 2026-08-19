@@ -49,26 +49,44 @@ The chain adapter is selected by configuration.
 
 | Adapter | When | Transaction hash | Status |
 | --- | --- | --- | --- |
-| `LocalAnchorAdapter` | no keypair configured | always `null` | `LOCAL_ONLY` |
-| `SolanaAnchorAdapter` | `SOLANA_ANCHOR_SECRET_KEY` set | real signature | `CONFIRMED` |
+| `LocalAnchorAdapter` | no signing key configured | always `null` | `LOCAL_ONLY` |
+| `EvmAnchorAdapter` | `EVM_ANCHOR_PRIVATE_KEY` **and** `EVM_RPC_URL` set | real hash | `CONFIRMED` |
 
 The local adapter exists so the protocol is fully exercisable without a funded
 wallet. It is deliberately honest about what it is: **it never fabricates a
 transaction hash**, and every surface renders `LOCAL_ONLY` anchors as *not*
 third-party verifiable.
 
-To anchor for real on devnet:
+To anchor for real:
 
 ```bash
-solana-keygen new --outfile merit-anchor.json
-solana airdrop 1 --keypair merit-anchor.json --url devnet
-# then in .env:
-#   SOLANA_ANCHOR_SECRET_KEY=<contents of merit-anchor.json>
-#   SOLANA_CLUSTER=devnet
+# in .env:
+#   EVM_ANCHOR_PRIVATE_KEY=0x…      the wallet that pays gas
+#   EVM_RPC_URL=https://…           no default; see below
+#   EVM_CHAIN_ID=…                  checked against the RPC before the first write
+#   EVM_CHAIN_NAME=robinhood        label used throughout the interface
+#   EVM_EXPLORER_URL=https://…      optional; `/tx/<hash>` is appended
 ```
 
-Roots are written as SPL Memo instructions (`merit:v1:0x…`), readable from any
-public RPC endpoint with no MERIT involvement.
+There is deliberately no default RPC URL. Public Solana clusters had well-known
+endpoints; an EVM deployment does not, and guessing one would mean anchoring to
+whatever chain the guess happened to hit. A key with no RPC URL logs the mistake
+and stays on the local adapter rather than pretending to be configured.
+
+`EVM_CHAIN_ID` is checked against what the RPC actually reports before the first
+write. A mismatch aborts: anchors that confirm on an unexpected chain cost money
+and prove nothing about the chain the protocol claims to be on, and that failure
+is silent unless something checks.
+
+Roots are written as the calldata of a zero-value transaction the anchoring
+wallet sends to itself — `merit:v1:0x…` in UTF-8, readable from any RPC endpoint
+with no MERIT involvement. No contract is deployed on purpose: a registry
+contract would buy nicer indexing at the price of a deployment, an owner, and a
+story about what happens when the owner key is lost, none of which the protocol
+needs when every root is already re-derivable from the proof bundle.
+
+Verification re-reads the transaction and checks the receipt status as well as
+the payload. A reverted transaction has a hash and a block and anchors nothing.
 
 ---
 
@@ -101,7 +119,7 @@ Sealing is safe to run concurrently. The pending set is claimed inside the
 transaction with `FOR UPDATE SKIP LOCKED`, so the scheduler and a manual
 `POST /api/v1/batches` take disjoint sets rather than racing for the same
 commitments. `npm run anchor:pending` remains the way to re-anchor batches
-sealed while no keypair was configured.
+sealed while no signing key was configured.
 
 ---
 
@@ -109,7 +127,7 @@ sealed while no keypair was configured.
 
 ```
 lib/crypto/       canonical encoding, commitments, Merkle tree   (pure, no I/O)
-lib/anchor/       AnchorService interface + Local and Solana adapters
+lib/anchor/       AnchorService interface + Local and EVM adapters
 lib/reputation/   metrics and the scoring engine                 (pure, no I/O)
 lib/qualification tier requirements
 lib/services/     decision, batching, corrections, reputation, verification, reads

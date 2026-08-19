@@ -2967,8 +2967,8 @@ export namespace Prisma {
       email: string
       name: string | null
       /**
-       * Solana address this account signs in with. Null for accounts created
-       * before wallet sign-in existed, and for any created by other means.
+       * EVM address this account signs in with, checksummed. Null for accounts
+       * created before wallet sign-in existed, and for any created by other means.
        */
       walletAddress: string | null
       createdAt: Date

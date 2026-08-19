@@ -64,7 +64,7 @@ export const createAgentSchema = z.object({
   walletAddress: z.string().min(32).max(64),
   venues: z.array(z.string().min(1)).min(1).max(20),
   assets: z.array(z.string().min(1)).min(1).max(50),
-  chain: z.string().min(2).max(32).default("solana"),
+  chain: z.string().min(2).max(32).default("robinhood"),
   riskProfile: z.enum(["CONSERVATIVE", "MODERATE", "AGGRESSIVE"]).default("MODERATE"),
 });
 

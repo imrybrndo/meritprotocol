@@ -78,8 +78,9 @@ export default async function DashboardPage() {
           blockchain write occurs and no transaction hash is produced — anchors
           show as <span className="font-mono text-ink-muted">LOCAL_ONLY</span> and
           are not third-party verifiable. Set{" "}
-          <code className="font-mono text-ink-muted">SOLANA_ANCHOR_SECRET_KEY</code>{" "}
-          to anchor for real.
+          <code className="font-mono text-ink-muted">EVM_ANCHOR_PRIVATE_KEY</code>{" "}
+          and <code className="font-mono text-ink-muted">EVM_RPC_URL</code> to
+          anchor for real.
         </div>
       ) : null}
 
