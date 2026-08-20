@@ -66,6 +66,10 @@ contextBridge.exposeInMainWorld("merit", {
   venues: {
     positions: () => call("venues:positions"),
   },
+  rwa: {
+    snapshot: (force?: boolean) => call("rwa:snapshot", force),
+    logos: () => call("rwa:logos"),
+  },
   market: {
     list: () => call("market:list"),
     overview: () => call("market:overview"),

@@ -179,17 +179,90 @@ model StrategyVersion {
   /// Optional signature by the agent wallet over `configHash`.
   creatorSignature String?
 
+  /// Public source repository, normalised to "host/owner/name". Optional: an
+  /// agent that discloses no source is a legitimate state, and one the
+  /// interface shows rather than hides.
+  repositoryUrl String?
+  /// The commit this version is pinned to, resolved once at registration.
+  ///
+  /// A bare URL points at a moving target — tomorrow's push would silently
+  /// change what yesterday's decision was made under. A commit SHA is a Merkle
+  /// root over the tree, so the content behind it cannot change without the
+  /// SHA changing. Frozen here for the same reason `configHash` is.
+  repositoryCommit String?
+
   status    VersionStatus @default(ACTIVE)
   createdAt DateTime      @default(now())
 
-  strategy  Strategy   @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  strategy  Strategy         @relation(fields: [strategyId], references: [id], onDelete: Cascade)
   decisions Decision[]
+  scans     RepositoryScan[]
 
   @@unique([strategyId, version])
   @@index([strategyId])
   @@index([configHash])
   @@index([status])
+  @@index([repositoryCommit])
   @@map("strategy_versions")
+}
+
+enum ProvenanceState {
+  /// Repository is public and the pinned commit is present in it.
+  VERIFIED
+  /// Repository or commit could not be found. Deleted, renamed, or made private.
+  MISSING
+  /// Repository is reachable but the pinned commit is not in it.
+  MISMATCH
+  /// The host could not be reached, or refused. Says nothing about the agent.
+  UNREACHABLE
+}
+
+/// One observation of a strategy version's source repository.
+///
+/// Append-only, like every other record here. A scan is never updated in place
+/// because the sequence is the point: a repository that was public in March and
+/// gone in August is exactly the fact this table exists to preserve, and
+/// overwriting the March row would erase it.
+///
+/// Nothing in this model feeds the MERIT score. Source provenance and trading
+/// performance are separate claims, and mixing them would make a score partly a
+/// measure of how presentable an agent's repository is.
+model RepositoryScan {
+  id                String @id @default(cuid())
+  strategyVersionId String
+
+  /// Normalised "host/owner/name" as scanned.
+  repository String
+  /// The pinned commit this scan looked for.
+  commitSha  String
+
+  state ProvenanceState
+
+  /// Per-check results, reported individually like the verification report.
+  checks Json
+
+  /// Facts read from the host. All null when the repository could not be read.
+  isPublic        Boolean?
+  isArchived      Boolean?
+  license         String?
+  primaryLanguage String?
+  /// The repository's own creation date, which no push can rewrite.
+  repoCreatedAt   DateTime?
+  lastPushedAt    DateTime?
+  stars           Int?
+
+  /// Populated when the host answered with an error worth showing an operator.
+  note String?
+
+  scannedAt DateTime @default(now())
+
+  strategyVersion StrategyVersion @relation(fields: [strategyVersionId], references: [id], onDelete: Cascade)
+
+  @@index([strategyVersionId])
+  @@index([state])
+  @@index([scannedAt])
+  @@index([strategyVersionId, scannedAt])
+  @@map("repository_scans")
 }
 
 // --------------------------------------------------------------- decisions --

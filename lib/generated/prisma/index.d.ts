@@ -49,6 +49,20 @@ export type Strategy = $Result.DefaultSelection<Prisma.$StrategyPayload>
  */
 export type StrategyVersion = $Result.DefaultSelection<Prisma.$StrategyVersionPayload>
 /**
+ * Model RepositoryScan
+ * One observation of a strategy version's source repository.
+ * 
+ * Append-only, like every other record here. A scan is never updated in place
+ * because the sequence is the point: a repository that was public in March and
+ * gone in August is exactly the fact this table exists to preserve, and
+ * overwriting the March row would erase it.
+ * 
+ * Nothing in this model feeds the MERIT score. Source provenance and trading
+ * performance are separate claims, and mixing them would make a score partly a
+ * measure of how presentable an agent's repository is.
+ */
+export type RepositoryScan = $Result.DefaultSelection<Prisma.$RepositoryScanPayload>
+/**
  * Model Decision
  * Append-only. There is no update path for the committed fields; see the
  * Correction model for how mistakes are handled.
@@ -146,6 +160,16 @@ export const VersionStatus: {
 export type VersionStatus = (typeof VersionStatus)[keyof typeof VersionStatus]
 
 
+export const ProvenanceState: {
+  VERIFIED: 'VERIFIED',
+  MISSING: 'MISSING',
+  MISMATCH: 'MISMATCH',
+  UNREACHABLE: 'UNREACHABLE'
+};
+
+export type ProvenanceState = (typeof ProvenanceState)[keyof typeof ProvenanceState]
+
+
 export const DecisionAction: {
   BUY: 'BUY',
   SELL: 'SELL',
@@ -237,6 +261,10 @@ export const RiskProfile: typeof $Enums.RiskProfile
 export type VersionStatus = $Enums.VersionStatus
 
 export const VersionStatus: typeof $Enums.VersionStatus
+
+export type ProvenanceState = $Enums.ProvenanceState
+
+export const ProvenanceState: typeof $Enums.ProvenanceState
 
 export type DecisionAction = $Enums.DecisionAction
 
@@ -442,6 +470,16 @@ export class PrismaClient<
     * ```
     */
   get strategyVersion(): Prisma.StrategyVersionDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.repositoryScan`: Exposes CRUD operations for the **RepositoryScan** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more RepositoryScans
+    * const repositoryScans = await prisma.repositoryScan.findMany()
+    * ```
+    */
+  get repositoryScan(): Prisma.RepositoryScanDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.decision`: Exposes CRUD operations for the **Decision** model.
@@ -1005,6 +1043,7 @@ export namespace Prisma {
     Agent: 'Agent',
     Strategy: 'Strategy',
     StrategyVersion: 'StrategyVersion',
+    RepositoryScan: 'RepositoryScan',
     Decision: 'Decision',
     Outcome: 'Outcome',
     Correction: 'Correction',
@@ -1031,7 +1070,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "walletChallenge" | "apiKey" | "agent" | "strategy" | "strategyVersion" | "decision" | "outcome" | "correction" | "merkleBatch" | "proof" | "blockchainAnchor" | "reputationScore" | "qualification" | "protocolEvent" | "verificationRequest" | "auditLog"
+      modelProps: "user" | "walletChallenge" | "apiKey" | "agent" | "strategy" | "strategyVersion" | "repositoryScan" | "decision" | "outcome" | "correction" | "merkleBatch" | "proof" | "blockchainAnchor" | "reputationScore" | "qualification" | "protocolEvent" | "verificationRequest" | "auditLog"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1476,6 +1515,80 @@ export namespace Prisma {
           count: {
             args: Prisma.StrategyVersionCountArgs<ExtArgs>
             result: $Utils.Optional<StrategyVersionCountAggregateOutputType> | number
+          }
+        }
+      }
+      RepositoryScan: {
+        payload: Prisma.$RepositoryScanPayload<ExtArgs>
+        fields: Prisma.RepositoryScanFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.RepositoryScanFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.RepositoryScanFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload>
+          }
+          findFirst: {
+            args: Prisma.RepositoryScanFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.RepositoryScanFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload>
+          }
+          findMany: {
+            args: Prisma.RepositoryScanFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload>[]
+          }
+          create: {
+            args: Prisma.RepositoryScanCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload>
+          }
+          createMany: {
+            args: Prisma.RepositoryScanCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.RepositoryScanCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload>[]
+          }
+          delete: {
+            args: Prisma.RepositoryScanDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload>
+          }
+          update: {
+            args: Prisma.RepositoryScanUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload>
+          }
+          deleteMany: {
+            args: Prisma.RepositoryScanDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.RepositoryScanUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.RepositoryScanUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload>[]
+          }
+          upsert: {
+            args: Prisma.RepositoryScanUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RepositoryScanPayload>
+          }
+          aggregate: {
+            args: Prisma.RepositoryScanAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateRepositoryScan>
+          }
+          groupBy: {
+            args: Prisma.RepositoryScanGroupByArgs<ExtArgs>
+            result: $Utils.Optional<RepositoryScanGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.RepositoryScanCountArgs<ExtArgs>
+            result: $Utils.Optional<RepositoryScanCountAggregateOutputType> | number
           }
         }
       }
@@ -2422,6 +2535,7 @@ export namespace Prisma {
     agent?: AgentOmit
     strategy?: StrategyOmit
     strategyVersion?: StrategyVersionOmit
+    repositoryScan?: RepositoryScanOmit
     decision?: DecisionOmit
     outcome?: OutcomeOmit
     correction?: CorrectionOmit
@@ -2652,10 +2766,12 @@ export namespace Prisma {
 
   export type StrategyVersionCountOutputType = {
     decisions: number
+    scans: number
   }
 
   export type StrategyVersionCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     decisions?: boolean | StrategyVersionCountOutputTypeCountDecisionsArgs
+    scans?: boolean | StrategyVersionCountOutputTypeCountScansArgs
   }
 
   // Custom InputTypes
@@ -2674,6 +2790,13 @@ export namespace Prisma {
    */
   export type StrategyVersionCountOutputTypeCountDecisionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: DecisionWhereInput
+  }
+
+  /**
+   * StrategyVersionCountOutputType without action
+   */
+  export type StrategyVersionCountOutputTypeCountScansArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: RepositoryScanWhereInput
   }
 
 
@@ -8455,6 +8578,8 @@ export namespace Prisma {
     modelVersion: string | null
     configHash: string | null
     creatorSignature: string | null
+    repositoryUrl: string | null
+    repositoryCommit: string | null
     status: $Enums.VersionStatus | null
     createdAt: Date | null
   }
@@ -8468,6 +8593,8 @@ export namespace Prisma {
     modelVersion: string | null
     configHash: string | null
     creatorSignature: string | null
+    repositoryUrl: string | null
+    repositoryCommit: string | null
     status: $Enums.VersionStatus | null
     createdAt: Date | null
   }
@@ -8482,6 +8609,8 @@ export namespace Prisma {
     configHash: number
     config: number
     creatorSignature: number
+    repositoryUrl: number
+    repositoryCommit: number
     status: number
     createdAt: number
     _all: number
@@ -8497,6 +8626,8 @@ export namespace Prisma {
     modelVersion?: true
     configHash?: true
     creatorSignature?: true
+    repositoryUrl?: true
+    repositoryCommit?: true
     status?: true
     createdAt?: true
   }
@@ -8510,6 +8641,8 @@ export namespace Prisma {
     modelVersion?: true
     configHash?: true
     creatorSignature?: true
+    repositoryUrl?: true
+    repositoryCommit?: true
     status?: true
     createdAt?: true
   }
@@ -8524,6 +8657,8 @@ export namespace Prisma {
     configHash?: true
     config?: true
     creatorSignature?: true
+    repositoryUrl?: true
+    repositoryCommit?: true
     status?: true
     createdAt?: true
     _all?: true
@@ -8611,6 +8746,8 @@ export namespace Prisma {
     configHash: string
     config: JsonValue
     creatorSignature: string | null
+    repositoryUrl: string | null
+    repositoryCommit: string | null
     status: $Enums.VersionStatus
     createdAt: Date
     _count: StrategyVersionCountAggregateOutputType | null
@@ -8642,10 +8779,13 @@ export namespace Prisma {
     configHash?: boolean
     config?: boolean
     creatorSignature?: boolean
+    repositoryUrl?: boolean
+    repositoryCommit?: boolean
     status?: boolean
     createdAt?: boolean
     strategy?: boolean | StrategyDefaultArgs<ExtArgs>
     decisions?: boolean | StrategyVersion$decisionsArgs<ExtArgs>
+    scans?: boolean | StrategyVersion$scansArgs<ExtArgs>
     _count?: boolean | StrategyVersionCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["strategyVersion"]>
 
@@ -8659,6 +8799,8 @@ export namespace Prisma {
     configHash?: boolean
     config?: boolean
     creatorSignature?: boolean
+    repositoryUrl?: boolean
+    repositoryCommit?: boolean
     status?: boolean
     createdAt?: boolean
     strategy?: boolean | StrategyDefaultArgs<ExtArgs>
@@ -8674,6 +8816,8 @@ export namespace Prisma {
     configHash?: boolean
     config?: boolean
     creatorSignature?: boolean
+    repositoryUrl?: boolean
+    repositoryCommit?: boolean
     status?: boolean
     createdAt?: boolean
     strategy?: boolean | StrategyDefaultArgs<ExtArgs>
@@ -8689,14 +8833,17 @@ export namespace Prisma {
     configHash?: boolean
     config?: boolean
     creatorSignature?: boolean
+    repositoryUrl?: boolean
+    repositoryCommit?: boolean
     status?: boolean
     createdAt?: boolean
   }
 
-  export type StrategyVersionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "strategyId" | "version" | "description" | "model" | "modelVersion" | "configHash" | "config" | "creatorSignature" | "status" | "createdAt", ExtArgs["result"]["strategyVersion"]>
+  export type StrategyVersionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "strategyId" | "version" | "description" | "model" | "modelVersion" | "configHash" | "config" | "creatorSignature" | "repositoryUrl" | "repositoryCommit" | "status" | "createdAt", ExtArgs["result"]["strategyVersion"]>
   export type StrategyVersionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     strategy?: boolean | StrategyDefaultArgs<ExtArgs>
     decisions?: boolean | StrategyVersion$decisionsArgs<ExtArgs>
+    scans?: boolean | StrategyVersion$scansArgs<ExtArgs>
     _count?: boolean | StrategyVersionCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type StrategyVersionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8711,6 +8858,7 @@ export namespace Prisma {
     objects: {
       strategy: Prisma.$StrategyPayload<ExtArgs>
       decisions: Prisma.$DecisionPayload<ExtArgs>[]
+      scans: Prisma.$RepositoryScanPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -8731,6 +8879,21 @@ export namespace Prisma {
        * Optional signature by the agent wallet over `configHash`.
        */
       creatorSignature: string | null
+      /**
+       * Public source repository, normalised to "host/owner/name". Optional: an
+       * agent that discloses no source is a legitimate state, and one the
+       * interface shows rather than hides.
+       */
+      repositoryUrl: string | null
+      /**
+       * The commit this version is pinned to, resolved once at registration.
+       * 
+       * A bare URL points at a moving target — tomorrow's push would silently
+       * change what yesterday's decision was made under. A commit SHA is a Merkle
+       * root over the tree, so the content behind it cannot change without the
+       * SHA changing. Frozen here for the same reason `configHash` is.
+       */
+      repositoryCommit: string | null
       status: $Enums.VersionStatus
       createdAt: Date
     }, ExtArgs["result"]["strategyVersion"]>
@@ -9129,6 +9292,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     strategy<T extends StrategyDefaultArgs<ExtArgs> = {}>(args?: Subset<T, StrategyDefaultArgs<ExtArgs>>): Prisma__StrategyClient<$Result.GetResult<Prisma.$StrategyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     decisions<T extends StrategyVersion$decisionsArgs<ExtArgs> = {}>(args?: Subset<T, StrategyVersion$decisionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$DecisionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    scans<T extends StrategyVersion$scansArgs<ExtArgs> = {}>(args?: Subset<T, StrategyVersion$scansArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -9167,6 +9331,8 @@ export namespace Prisma {
     readonly configHash: FieldRef<"StrategyVersion", 'String'>
     readonly config: FieldRef<"StrategyVersion", 'Json'>
     readonly creatorSignature: FieldRef<"StrategyVersion", 'String'>
+    readonly repositoryUrl: FieldRef<"StrategyVersion", 'String'>
+    readonly repositoryCommit: FieldRef<"StrategyVersion", 'String'>
     readonly status: FieldRef<"StrategyVersion", 'VersionStatus'>
     readonly createdAt: FieldRef<"StrategyVersion", 'DateTime'>
   }
@@ -9594,6 +9760,30 @@ export namespace Prisma {
   }
 
   /**
+   * StrategyVersion.scans
+   */
+  export type StrategyVersion$scansArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
+    where?: RepositoryScanWhereInput
+    orderBy?: RepositoryScanOrderByWithRelationInput | RepositoryScanOrderByWithRelationInput[]
+    cursor?: RepositoryScanWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: RepositoryScanScalarFieldEnum | RepositoryScanScalarFieldEnum[]
+  }
+
+  /**
    * StrategyVersion without action
    */
   export type StrategyVersionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -9609,6 +9799,1247 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: StrategyVersionInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model RepositoryScan
+   */
+
+  export type AggregateRepositoryScan = {
+    _count: RepositoryScanCountAggregateOutputType | null
+    _avg: RepositoryScanAvgAggregateOutputType | null
+    _sum: RepositoryScanSumAggregateOutputType | null
+    _min: RepositoryScanMinAggregateOutputType | null
+    _max: RepositoryScanMaxAggregateOutputType | null
+  }
+
+  export type RepositoryScanAvgAggregateOutputType = {
+    stars: number | null
+  }
+
+  export type RepositoryScanSumAggregateOutputType = {
+    stars: number | null
+  }
+
+  export type RepositoryScanMinAggregateOutputType = {
+    id: string | null
+    strategyVersionId: string | null
+    repository: string | null
+    commitSha: string | null
+    state: $Enums.ProvenanceState | null
+    isPublic: boolean | null
+    isArchived: boolean | null
+    license: string | null
+    primaryLanguage: string | null
+    repoCreatedAt: Date | null
+    lastPushedAt: Date | null
+    stars: number | null
+    note: string | null
+    scannedAt: Date | null
+  }
+
+  export type RepositoryScanMaxAggregateOutputType = {
+    id: string | null
+    strategyVersionId: string | null
+    repository: string | null
+    commitSha: string | null
+    state: $Enums.ProvenanceState | null
+    isPublic: boolean | null
+    isArchived: boolean | null
+    license: string | null
+    primaryLanguage: string | null
+    repoCreatedAt: Date | null
+    lastPushedAt: Date | null
+    stars: number | null
+    note: string | null
+    scannedAt: Date | null
+  }
+
+  export type RepositoryScanCountAggregateOutputType = {
+    id: number
+    strategyVersionId: number
+    repository: number
+    commitSha: number
+    state: number
+    checks: number
+    isPublic: number
+    isArchived: number
+    license: number
+    primaryLanguage: number
+    repoCreatedAt: number
+    lastPushedAt: number
+    stars: number
+    note: number
+    scannedAt: number
+    _all: number
+  }
+
+
+  export type RepositoryScanAvgAggregateInputType = {
+    stars?: true
+  }
+
+  export type RepositoryScanSumAggregateInputType = {
+    stars?: true
+  }
+
+  export type RepositoryScanMinAggregateInputType = {
+    id?: true
+    strategyVersionId?: true
+    repository?: true
+    commitSha?: true
+    state?: true
+    isPublic?: true
+    isArchived?: true
+    license?: true
+    primaryLanguage?: true
+    repoCreatedAt?: true
+    lastPushedAt?: true
+    stars?: true
+    note?: true
+    scannedAt?: true
+  }
+
+  export type RepositoryScanMaxAggregateInputType = {
+    id?: true
+    strategyVersionId?: true
+    repository?: true
+    commitSha?: true
+    state?: true
+    isPublic?: true
+    isArchived?: true
+    license?: true
+    primaryLanguage?: true
+    repoCreatedAt?: true
+    lastPushedAt?: true
+    stars?: true
+    note?: true
+    scannedAt?: true
+  }
+
+  export type RepositoryScanCountAggregateInputType = {
+    id?: true
+    strategyVersionId?: true
+    repository?: true
+    commitSha?: true
+    state?: true
+    checks?: true
+    isPublic?: true
+    isArchived?: true
+    license?: true
+    primaryLanguage?: true
+    repoCreatedAt?: true
+    lastPushedAt?: true
+    stars?: true
+    note?: true
+    scannedAt?: true
+    _all?: true
+  }
+
+  export type RepositoryScanAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which RepositoryScan to aggregate.
+     */
+    where?: RepositoryScanWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RepositoryScans to fetch.
+     */
+    orderBy?: RepositoryScanOrderByWithRelationInput | RepositoryScanOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: RepositoryScanWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RepositoryScans from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RepositoryScans.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned RepositoryScans
+    **/
+    _count?: true | RepositoryScanCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: RepositoryScanAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: RepositoryScanSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: RepositoryScanMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: RepositoryScanMaxAggregateInputType
+  }
+
+  export type GetRepositoryScanAggregateType<T extends RepositoryScanAggregateArgs> = {
+        [P in keyof T & keyof AggregateRepositoryScan]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateRepositoryScan[P]>
+      : GetScalarType<T[P], AggregateRepositoryScan[P]>
+  }
+
+
+
+
+  export type RepositoryScanGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: RepositoryScanWhereInput
+    orderBy?: RepositoryScanOrderByWithAggregationInput | RepositoryScanOrderByWithAggregationInput[]
+    by: RepositoryScanScalarFieldEnum[] | RepositoryScanScalarFieldEnum
+    having?: RepositoryScanScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: RepositoryScanCountAggregateInputType | true
+    _avg?: RepositoryScanAvgAggregateInputType
+    _sum?: RepositoryScanSumAggregateInputType
+    _min?: RepositoryScanMinAggregateInputType
+    _max?: RepositoryScanMaxAggregateInputType
+  }
+
+  export type RepositoryScanGroupByOutputType = {
+    id: string
+    strategyVersionId: string
+    repository: string
+    commitSha: string
+    state: $Enums.ProvenanceState
+    checks: JsonValue
+    isPublic: boolean | null
+    isArchived: boolean | null
+    license: string | null
+    primaryLanguage: string | null
+    repoCreatedAt: Date | null
+    lastPushedAt: Date | null
+    stars: number | null
+    note: string | null
+    scannedAt: Date
+    _count: RepositoryScanCountAggregateOutputType | null
+    _avg: RepositoryScanAvgAggregateOutputType | null
+    _sum: RepositoryScanSumAggregateOutputType | null
+    _min: RepositoryScanMinAggregateOutputType | null
+    _max: RepositoryScanMaxAggregateOutputType | null
+  }
+
+  type GetRepositoryScanGroupByPayload<T extends RepositoryScanGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<RepositoryScanGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof RepositoryScanGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], RepositoryScanGroupByOutputType[P]>
+            : GetScalarType<T[P], RepositoryScanGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type RepositoryScanSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    strategyVersionId?: boolean
+    repository?: boolean
+    commitSha?: boolean
+    state?: boolean
+    checks?: boolean
+    isPublic?: boolean
+    isArchived?: boolean
+    license?: boolean
+    primaryLanguage?: boolean
+    repoCreatedAt?: boolean
+    lastPushedAt?: boolean
+    stars?: boolean
+    note?: boolean
+    scannedAt?: boolean
+    strategyVersion?: boolean | StrategyVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["repositoryScan"]>
+
+  export type RepositoryScanSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    strategyVersionId?: boolean
+    repository?: boolean
+    commitSha?: boolean
+    state?: boolean
+    checks?: boolean
+    isPublic?: boolean
+    isArchived?: boolean
+    license?: boolean
+    primaryLanguage?: boolean
+    repoCreatedAt?: boolean
+    lastPushedAt?: boolean
+    stars?: boolean
+    note?: boolean
+    scannedAt?: boolean
+    strategyVersion?: boolean | StrategyVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["repositoryScan"]>
+
+  export type RepositoryScanSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    strategyVersionId?: boolean
+    repository?: boolean
+    commitSha?: boolean
+    state?: boolean
+    checks?: boolean
+    isPublic?: boolean
+    isArchived?: boolean
+    license?: boolean
+    primaryLanguage?: boolean
+    repoCreatedAt?: boolean
+    lastPushedAt?: boolean
+    stars?: boolean
+    note?: boolean
+    scannedAt?: boolean
+    strategyVersion?: boolean | StrategyVersionDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["repositoryScan"]>
+
+  export type RepositoryScanSelectScalar = {
+    id?: boolean
+    strategyVersionId?: boolean
+    repository?: boolean
+    commitSha?: boolean
+    state?: boolean
+    checks?: boolean
+    isPublic?: boolean
+    isArchived?: boolean
+    license?: boolean
+    primaryLanguage?: boolean
+    repoCreatedAt?: boolean
+    lastPushedAt?: boolean
+    stars?: boolean
+    note?: boolean
+    scannedAt?: boolean
+  }
+
+  export type RepositoryScanOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "strategyVersionId" | "repository" | "commitSha" | "state" | "checks" | "isPublic" | "isArchived" | "license" | "primaryLanguage" | "repoCreatedAt" | "lastPushedAt" | "stars" | "note" | "scannedAt", ExtArgs["result"]["repositoryScan"]>
+  export type RepositoryScanInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    strategyVersion?: boolean | StrategyVersionDefaultArgs<ExtArgs>
+  }
+  export type RepositoryScanIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    strategyVersion?: boolean | StrategyVersionDefaultArgs<ExtArgs>
+  }
+  export type RepositoryScanIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    strategyVersion?: boolean | StrategyVersionDefaultArgs<ExtArgs>
+  }
+
+  export type $RepositoryScanPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "RepositoryScan"
+    objects: {
+      strategyVersion: Prisma.$StrategyVersionPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      strategyVersionId: string
+      /**
+       * Normalised "host/owner/name" as scanned.
+       */
+      repository: string
+      /**
+       * The pinned commit this scan looked for.
+       */
+      commitSha: string
+      state: $Enums.ProvenanceState
+      /**
+       * Per-check results, reported individually like the verification report.
+       */
+      checks: Prisma.JsonValue
+      /**
+       * Facts read from the host. All null when the repository could not be read.
+       */
+      isPublic: boolean | null
+      isArchived: boolean | null
+      license: string | null
+      primaryLanguage: string | null
+      /**
+       * The repository's own creation date, which no push can rewrite.
+       */
+      repoCreatedAt: Date | null
+      lastPushedAt: Date | null
+      stars: number | null
+      /**
+       * Populated when the host answered with an error worth showing an operator.
+       */
+      note: string | null
+      scannedAt: Date
+    }, ExtArgs["result"]["repositoryScan"]>
+    composites: {}
+  }
+
+  type RepositoryScanGetPayload<S extends boolean | null | undefined | RepositoryScanDefaultArgs> = $Result.GetResult<Prisma.$RepositoryScanPayload, S>
+
+  type RepositoryScanCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<RepositoryScanFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: RepositoryScanCountAggregateInputType | true
+    }
+
+  export interface RepositoryScanDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['RepositoryScan'], meta: { name: 'RepositoryScan' } }
+    /**
+     * Find zero or one RepositoryScan that matches the filter.
+     * @param {RepositoryScanFindUniqueArgs} args - Arguments to find a RepositoryScan
+     * @example
+     * // Get one RepositoryScan
+     * const repositoryScan = await prisma.repositoryScan.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends RepositoryScanFindUniqueArgs>(args: SelectSubset<T, RepositoryScanFindUniqueArgs<ExtArgs>>): Prisma__RepositoryScanClient<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one RepositoryScan that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {RepositoryScanFindUniqueOrThrowArgs} args - Arguments to find a RepositoryScan
+     * @example
+     * // Get one RepositoryScan
+     * const repositoryScan = await prisma.repositoryScan.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends RepositoryScanFindUniqueOrThrowArgs>(args: SelectSubset<T, RepositoryScanFindUniqueOrThrowArgs<ExtArgs>>): Prisma__RepositoryScanClient<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first RepositoryScan that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RepositoryScanFindFirstArgs} args - Arguments to find a RepositoryScan
+     * @example
+     * // Get one RepositoryScan
+     * const repositoryScan = await prisma.repositoryScan.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends RepositoryScanFindFirstArgs>(args?: SelectSubset<T, RepositoryScanFindFirstArgs<ExtArgs>>): Prisma__RepositoryScanClient<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first RepositoryScan that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RepositoryScanFindFirstOrThrowArgs} args - Arguments to find a RepositoryScan
+     * @example
+     * // Get one RepositoryScan
+     * const repositoryScan = await prisma.repositoryScan.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends RepositoryScanFindFirstOrThrowArgs>(args?: SelectSubset<T, RepositoryScanFindFirstOrThrowArgs<ExtArgs>>): Prisma__RepositoryScanClient<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more RepositoryScans that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RepositoryScanFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all RepositoryScans
+     * const repositoryScans = await prisma.repositoryScan.findMany()
+     * 
+     * // Get first 10 RepositoryScans
+     * const repositoryScans = await prisma.repositoryScan.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const repositoryScanWithIdOnly = await prisma.repositoryScan.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends RepositoryScanFindManyArgs>(args?: SelectSubset<T, RepositoryScanFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a RepositoryScan.
+     * @param {RepositoryScanCreateArgs} args - Arguments to create a RepositoryScan.
+     * @example
+     * // Create one RepositoryScan
+     * const RepositoryScan = await prisma.repositoryScan.create({
+     *   data: {
+     *     // ... data to create a RepositoryScan
+     *   }
+     * })
+     * 
+     */
+    create<T extends RepositoryScanCreateArgs>(args: SelectSubset<T, RepositoryScanCreateArgs<ExtArgs>>): Prisma__RepositoryScanClient<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many RepositoryScans.
+     * @param {RepositoryScanCreateManyArgs} args - Arguments to create many RepositoryScans.
+     * @example
+     * // Create many RepositoryScans
+     * const repositoryScan = await prisma.repositoryScan.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends RepositoryScanCreateManyArgs>(args?: SelectSubset<T, RepositoryScanCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many RepositoryScans and returns the data saved in the database.
+     * @param {RepositoryScanCreateManyAndReturnArgs} args - Arguments to create many RepositoryScans.
+     * @example
+     * // Create many RepositoryScans
+     * const repositoryScan = await prisma.repositoryScan.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many RepositoryScans and only return the `id`
+     * const repositoryScanWithIdOnly = await prisma.repositoryScan.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends RepositoryScanCreateManyAndReturnArgs>(args?: SelectSubset<T, RepositoryScanCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a RepositoryScan.
+     * @param {RepositoryScanDeleteArgs} args - Arguments to delete one RepositoryScan.
+     * @example
+     * // Delete one RepositoryScan
+     * const RepositoryScan = await prisma.repositoryScan.delete({
+     *   where: {
+     *     // ... filter to delete one RepositoryScan
+     *   }
+     * })
+     * 
+     */
+    delete<T extends RepositoryScanDeleteArgs>(args: SelectSubset<T, RepositoryScanDeleteArgs<ExtArgs>>): Prisma__RepositoryScanClient<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one RepositoryScan.
+     * @param {RepositoryScanUpdateArgs} args - Arguments to update one RepositoryScan.
+     * @example
+     * // Update one RepositoryScan
+     * const repositoryScan = await prisma.repositoryScan.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends RepositoryScanUpdateArgs>(args: SelectSubset<T, RepositoryScanUpdateArgs<ExtArgs>>): Prisma__RepositoryScanClient<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more RepositoryScans.
+     * @param {RepositoryScanDeleteManyArgs} args - Arguments to filter RepositoryScans to delete.
+     * @example
+     * // Delete a few RepositoryScans
+     * const { count } = await prisma.repositoryScan.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends RepositoryScanDeleteManyArgs>(args?: SelectSubset<T, RepositoryScanDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more RepositoryScans.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RepositoryScanUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many RepositoryScans
+     * const repositoryScan = await prisma.repositoryScan.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends RepositoryScanUpdateManyArgs>(args: SelectSubset<T, RepositoryScanUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more RepositoryScans and returns the data updated in the database.
+     * @param {RepositoryScanUpdateManyAndReturnArgs} args - Arguments to update many RepositoryScans.
+     * @example
+     * // Update many RepositoryScans
+     * const repositoryScan = await prisma.repositoryScan.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more RepositoryScans and only return the `id`
+     * const repositoryScanWithIdOnly = await prisma.repositoryScan.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends RepositoryScanUpdateManyAndReturnArgs>(args: SelectSubset<T, RepositoryScanUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one RepositoryScan.
+     * @param {RepositoryScanUpsertArgs} args - Arguments to update or create a RepositoryScan.
+     * @example
+     * // Update or create a RepositoryScan
+     * const repositoryScan = await prisma.repositoryScan.upsert({
+     *   create: {
+     *     // ... data to create a RepositoryScan
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the RepositoryScan we want to update
+     *   }
+     * })
+     */
+    upsert<T extends RepositoryScanUpsertArgs>(args: SelectSubset<T, RepositoryScanUpsertArgs<ExtArgs>>): Prisma__RepositoryScanClient<$Result.GetResult<Prisma.$RepositoryScanPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of RepositoryScans.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RepositoryScanCountArgs} args - Arguments to filter RepositoryScans to count.
+     * @example
+     * // Count the number of RepositoryScans
+     * const count = await prisma.repositoryScan.count({
+     *   where: {
+     *     // ... the filter for the RepositoryScans we want to count
+     *   }
+     * })
+    **/
+    count<T extends RepositoryScanCountArgs>(
+      args?: Subset<T, RepositoryScanCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], RepositoryScanCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a RepositoryScan.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RepositoryScanAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends RepositoryScanAggregateArgs>(args: Subset<T, RepositoryScanAggregateArgs>): Prisma.PrismaPromise<GetRepositoryScanAggregateType<T>>
+
+    /**
+     * Group by RepositoryScan.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RepositoryScanGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends RepositoryScanGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: RepositoryScanGroupByArgs['orderBy'] }
+        : { orderBy?: RepositoryScanGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, RepositoryScanGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetRepositoryScanGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the RepositoryScan model
+   */
+  readonly fields: RepositoryScanFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for RepositoryScan.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__RepositoryScanClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    strategyVersion<T extends StrategyVersionDefaultArgs<ExtArgs> = {}>(args?: Subset<T, StrategyVersionDefaultArgs<ExtArgs>>): Prisma__StrategyVersionClient<$Result.GetResult<Prisma.$StrategyVersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the RepositoryScan model
+   */
+  interface RepositoryScanFieldRefs {
+    readonly id: FieldRef<"RepositoryScan", 'String'>
+    readonly strategyVersionId: FieldRef<"RepositoryScan", 'String'>
+    readonly repository: FieldRef<"RepositoryScan", 'String'>
+    readonly commitSha: FieldRef<"RepositoryScan", 'String'>
+    readonly state: FieldRef<"RepositoryScan", 'ProvenanceState'>
+    readonly checks: FieldRef<"RepositoryScan", 'Json'>
+    readonly isPublic: FieldRef<"RepositoryScan", 'Boolean'>
+    readonly isArchived: FieldRef<"RepositoryScan", 'Boolean'>
+    readonly license: FieldRef<"RepositoryScan", 'String'>
+    readonly primaryLanguage: FieldRef<"RepositoryScan", 'String'>
+    readonly repoCreatedAt: FieldRef<"RepositoryScan", 'DateTime'>
+    readonly lastPushedAt: FieldRef<"RepositoryScan", 'DateTime'>
+    readonly stars: FieldRef<"RepositoryScan", 'Int'>
+    readonly note: FieldRef<"RepositoryScan", 'String'>
+    readonly scannedAt: FieldRef<"RepositoryScan", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * RepositoryScan findUnique
+   */
+  export type RepositoryScanFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
+    /**
+     * Filter, which RepositoryScan to fetch.
+     */
+    where: RepositoryScanWhereUniqueInput
+  }
+
+  /**
+   * RepositoryScan findUniqueOrThrow
+   */
+  export type RepositoryScanFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
+    /**
+     * Filter, which RepositoryScan to fetch.
+     */
+    where: RepositoryScanWhereUniqueInput
+  }
+
+  /**
+   * RepositoryScan findFirst
+   */
+  export type RepositoryScanFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
+    /**
+     * Filter, which RepositoryScan to fetch.
+     */
+    where?: RepositoryScanWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RepositoryScans to fetch.
+     */
+    orderBy?: RepositoryScanOrderByWithRelationInput | RepositoryScanOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for RepositoryScans.
+     */
+    cursor?: RepositoryScanWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RepositoryScans from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RepositoryScans.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of RepositoryScans.
+     */
+    distinct?: RepositoryScanScalarFieldEnum | RepositoryScanScalarFieldEnum[]
+  }
+
+  /**
+   * RepositoryScan findFirstOrThrow
+   */
+  export type RepositoryScanFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
+    /**
+     * Filter, which RepositoryScan to fetch.
+     */
+    where?: RepositoryScanWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RepositoryScans to fetch.
+     */
+    orderBy?: RepositoryScanOrderByWithRelationInput | RepositoryScanOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for RepositoryScans.
+     */
+    cursor?: RepositoryScanWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RepositoryScans from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RepositoryScans.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of RepositoryScans.
+     */
+    distinct?: RepositoryScanScalarFieldEnum | RepositoryScanScalarFieldEnum[]
+  }
+
+  /**
+   * RepositoryScan findMany
+   */
+  export type RepositoryScanFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
+    /**
+     * Filter, which RepositoryScans to fetch.
+     */
+    where?: RepositoryScanWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RepositoryScans to fetch.
+     */
+    orderBy?: RepositoryScanOrderByWithRelationInput | RepositoryScanOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing RepositoryScans.
+     */
+    cursor?: RepositoryScanWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RepositoryScans from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RepositoryScans.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of RepositoryScans.
+     */
+    distinct?: RepositoryScanScalarFieldEnum | RepositoryScanScalarFieldEnum[]
+  }
+
+  /**
+   * RepositoryScan create
+   */
+  export type RepositoryScanCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
+    /**
+     * The data needed to create a RepositoryScan.
+     */
+    data: XOR<RepositoryScanCreateInput, RepositoryScanUncheckedCreateInput>
+  }
+
+  /**
+   * RepositoryScan createMany
+   */
+  export type RepositoryScanCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many RepositoryScans.
+     */
+    data: RepositoryScanCreateManyInput | RepositoryScanCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * RepositoryScan createManyAndReturn
+   */
+  export type RepositoryScanCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * The data used to create many RepositoryScans.
+     */
+    data: RepositoryScanCreateManyInput | RepositoryScanCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * RepositoryScan update
+   */
+  export type RepositoryScanUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
+    /**
+     * The data needed to update a RepositoryScan.
+     */
+    data: XOR<RepositoryScanUpdateInput, RepositoryScanUncheckedUpdateInput>
+    /**
+     * Choose, which RepositoryScan to update.
+     */
+    where: RepositoryScanWhereUniqueInput
+  }
+
+  /**
+   * RepositoryScan updateMany
+   */
+  export type RepositoryScanUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update RepositoryScans.
+     */
+    data: XOR<RepositoryScanUpdateManyMutationInput, RepositoryScanUncheckedUpdateManyInput>
+    /**
+     * Filter which RepositoryScans to update
+     */
+    where?: RepositoryScanWhereInput
+    /**
+     * Limit how many RepositoryScans to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * RepositoryScan updateManyAndReturn
+   */
+  export type RepositoryScanUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * The data used to update RepositoryScans.
+     */
+    data: XOR<RepositoryScanUpdateManyMutationInput, RepositoryScanUncheckedUpdateManyInput>
+    /**
+     * Filter which RepositoryScans to update
+     */
+    where?: RepositoryScanWhereInput
+    /**
+     * Limit how many RepositoryScans to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * RepositoryScan upsert
+   */
+  export type RepositoryScanUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
+    /**
+     * The filter to search for the RepositoryScan to update in case it exists.
+     */
+    where: RepositoryScanWhereUniqueInput
+    /**
+     * In case the RepositoryScan found by the `where` argument doesn't exist, create a new RepositoryScan with this data.
+     */
+    create: XOR<RepositoryScanCreateInput, RepositoryScanUncheckedCreateInput>
+    /**
+     * In case the RepositoryScan was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<RepositoryScanUpdateInput, RepositoryScanUncheckedUpdateInput>
+  }
+
+  /**
+   * RepositoryScan delete
+   */
+  export type RepositoryScanDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
+    /**
+     * Filter which RepositoryScan to delete.
+     */
+    where: RepositoryScanWhereUniqueInput
+  }
+
+  /**
+   * RepositoryScan deleteMany
+   */
+  export type RepositoryScanDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which RepositoryScans to delete
+     */
+    where?: RepositoryScanWhereInput
+    /**
+     * Limit how many RepositoryScans to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * RepositoryScan without action
+   */
+  export type RepositoryScanDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RepositoryScan
+     */
+    select?: RepositoryScanSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RepositoryScan
+     */
+    omit?: RepositoryScanOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RepositoryScanInclude<ExtArgs> | null
   }
 
 
@@ -22352,11 +23783,34 @@ export namespace Prisma {
     configHash: 'configHash',
     config: 'config',
     creatorSignature: 'creatorSignature',
+    repositoryUrl: 'repositoryUrl',
+    repositoryCommit: 'repositoryCommit',
     status: 'status',
     createdAt: 'createdAt'
   };
 
   export type StrategyVersionScalarFieldEnum = (typeof StrategyVersionScalarFieldEnum)[keyof typeof StrategyVersionScalarFieldEnum]
+
+
+  export const RepositoryScanScalarFieldEnum: {
+    id: 'id',
+    strategyVersionId: 'strategyVersionId',
+    repository: 'repository',
+    commitSha: 'commitSha',
+    state: 'state',
+    checks: 'checks',
+    isPublic: 'isPublic',
+    isArchived: 'isArchived',
+    license: 'license',
+    primaryLanguage: 'primaryLanguage',
+    repoCreatedAt: 'repoCreatedAt',
+    lastPushedAt: 'lastPushedAt',
+    stars: 'stars',
+    note: 'note',
+    scannedAt: 'scannedAt'
+  };
+
+  export type RepositoryScanScalarFieldEnum = (typeof RepositoryScanScalarFieldEnum)[keyof typeof RepositoryScanScalarFieldEnum]
 
 
   export const DecisionScalarFieldEnum: {
@@ -22687,6 +24141,34 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'ProvenanceState'
+   */
+  export type EnumProvenanceStateFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProvenanceState'>
+    
+
+
+  /**
+   * Reference to a field of type 'ProvenanceState[]'
+   */
+  export type ListEnumProvenanceStateFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProvenanceState[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'Int'
+   */
+  export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+    
+
+
+  /**
+   * Reference to a field of type 'Int[]'
+   */
+  export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+  /**
    * Reference to a field of type 'DecisionAction'
    */
   export type EnumDecisionActionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DecisionAction'>
@@ -22739,20 +24221,6 @@ export namespace Prisma {
    * Reference to a field of type 'BigInt[]'
    */
   export type ListBigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BigInt[]'>
-    
-
-
-  /**
-   * Reference to a field of type 'Int'
-   */
-  export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
-    
-
-
-  /**
-   * Reference to a field of type 'Int[]'
-   */
-  export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
     
 
 
@@ -23221,10 +24689,13 @@ export namespace Prisma {
     configHash?: StringFilter<"StrategyVersion"> | string
     config?: JsonFilter<"StrategyVersion">
     creatorSignature?: StringNullableFilter<"StrategyVersion"> | string | null
+    repositoryUrl?: StringNullableFilter<"StrategyVersion"> | string | null
+    repositoryCommit?: StringNullableFilter<"StrategyVersion"> | string | null
     status?: EnumVersionStatusFilter<"StrategyVersion"> | $Enums.VersionStatus
     createdAt?: DateTimeFilter<"StrategyVersion"> | Date | string
     strategy?: XOR<StrategyScalarRelationFilter, StrategyWhereInput>
     decisions?: DecisionListRelationFilter
+    scans?: RepositoryScanListRelationFilter
   }
 
   export type StrategyVersionOrderByWithRelationInput = {
@@ -23237,10 +24708,13 @@ export namespace Prisma {
     configHash?: SortOrder
     config?: SortOrder
     creatorSignature?: SortOrderInput | SortOrder
+    repositoryUrl?: SortOrderInput | SortOrder
+    repositoryCommit?: SortOrderInput | SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     strategy?: StrategyOrderByWithRelationInput
     decisions?: DecisionOrderByRelationAggregateInput
+    scans?: RepositoryScanOrderByRelationAggregateInput
   }
 
   export type StrategyVersionWhereUniqueInput = Prisma.AtLeast<{
@@ -23257,10 +24731,13 @@ export namespace Prisma {
     configHash?: StringFilter<"StrategyVersion"> | string
     config?: JsonFilter<"StrategyVersion">
     creatorSignature?: StringNullableFilter<"StrategyVersion"> | string | null
+    repositoryUrl?: StringNullableFilter<"StrategyVersion"> | string | null
+    repositoryCommit?: StringNullableFilter<"StrategyVersion"> | string | null
     status?: EnumVersionStatusFilter<"StrategyVersion"> | $Enums.VersionStatus
     createdAt?: DateTimeFilter<"StrategyVersion"> | Date | string
     strategy?: XOR<StrategyScalarRelationFilter, StrategyWhereInput>
     decisions?: DecisionListRelationFilter
+    scans?: RepositoryScanListRelationFilter
   }, "id" | "strategyId_version">
 
   export type StrategyVersionOrderByWithAggregationInput = {
@@ -23273,6 +24750,8 @@ export namespace Prisma {
     configHash?: SortOrder
     config?: SortOrder
     creatorSignature?: SortOrderInput | SortOrder
+    repositoryUrl?: SortOrderInput | SortOrder
+    repositoryCommit?: SortOrderInput | SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     _count?: StrategyVersionCountOrderByAggregateInput
@@ -23293,8 +24772,117 @@ export namespace Prisma {
     configHash?: StringWithAggregatesFilter<"StrategyVersion"> | string
     config?: JsonWithAggregatesFilter<"StrategyVersion">
     creatorSignature?: StringNullableWithAggregatesFilter<"StrategyVersion"> | string | null
+    repositoryUrl?: StringNullableWithAggregatesFilter<"StrategyVersion"> | string | null
+    repositoryCommit?: StringNullableWithAggregatesFilter<"StrategyVersion"> | string | null
     status?: EnumVersionStatusWithAggregatesFilter<"StrategyVersion"> | $Enums.VersionStatus
     createdAt?: DateTimeWithAggregatesFilter<"StrategyVersion"> | Date | string
+  }
+
+  export type RepositoryScanWhereInput = {
+    AND?: RepositoryScanWhereInput | RepositoryScanWhereInput[]
+    OR?: RepositoryScanWhereInput[]
+    NOT?: RepositoryScanWhereInput | RepositoryScanWhereInput[]
+    id?: StringFilter<"RepositoryScan"> | string
+    strategyVersionId?: StringFilter<"RepositoryScan"> | string
+    repository?: StringFilter<"RepositoryScan"> | string
+    commitSha?: StringFilter<"RepositoryScan"> | string
+    state?: EnumProvenanceStateFilter<"RepositoryScan"> | $Enums.ProvenanceState
+    checks?: JsonFilter<"RepositoryScan">
+    isPublic?: BoolNullableFilter<"RepositoryScan"> | boolean | null
+    isArchived?: BoolNullableFilter<"RepositoryScan"> | boolean | null
+    license?: StringNullableFilter<"RepositoryScan"> | string | null
+    primaryLanguage?: StringNullableFilter<"RepositoryScan"> | string | null
+    repoCreatedAt?: DateTimeNullableFilter<"RepositoryScan"> | Date | string | null
+    lastPushedAt?: DateTimeNullableFilter<"RepositoryScan"> | Date | string | null
+    stars?: IntNullableFilter<"RepositoryScan"> | number | null
+    note?: StringNullableFilter<"RepositoryScan"> | string | null
+    scannedAt?: DateTimeFilter<"RepositoryScan"> | Date | string
+    strategyVersion?: XOR<StrategyVersionScalarRelationFilter, StrategyVersionWhereInput>
+  }
+
+  export type RepositoryScanOrderByWithRelationInput = {
+    id?: SortOrder
+    strategyVersionId?: SortOrder
+    repository?: SortOrder
+    commitSha?: SortOrder
+    state?: SortOrder
+    checks?: SortOrder
+    isPublic?: SortOrderInput | SortOrder
+    isArchived?: SortOrderInput | SortOrder
+    license?: SortOrderInput | SortOrder
+    primaryLanguage?: SortOrderInput | SortOrder
+    repoCreatedAt?: SortOrderInput | SortOrder
+    lastPushedAt?: SortOrderInput | SortOrder
+    stars?: SortOrderInput | SortOrder
+    note?: SortOrderInput | SortOrder
+    scannedAt?: SortOrder
+    strategyVersion?: StrategyVersionOrderByWithRelationInput
+  }
+
+  export type RepositoryScanWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: RepositoryScanWhereInput | RepositoryScanWhereInput[]
+    OR?: RepositoryScanWhereInput[]
+    NOT?: RepositoryScanWhereInput | RepositoryScanWhereInput[]
+    strategyVersionId?: StringFilter<"RepositoryScan"> | string
+    repository?: StringFilter<"RepositoryScan"> | string
+    commitSha?: StringFilter<"RepositoryScan"> | string
+    state?: EnumProvenanceStateFilter<"RepositoryScan"> | $Enums.ProvenanceState
+    checks?: JsonFilter<"RepositoryScan">
+    isPublic?: BoolNullableFilter<"RepositoryScan"> | boolean | null
+    isArchived?: BoolNullableFilter<"RepositoryScan"> | boolean | null
+    license?: StringNullableFilter<"RepositoryScan"> | string | null
+    primaryLanguage?: StringNullableFilter<"RepositoryScan"> | string | null
+    repoCreatedAt?: DateTimeNullableFilter<"RepositoryScan"> | Date | string | null
+    lastPushedAt?: DateTimeNullableFilter<"RepositoryScan"> | Date | string | null
+    stars?: IntNullableFilter<"RepositoryScan"> | number | null
+    note?: StringNullableFilter<"RepositoryScan"> | string | null
+    scannedAt?: DateTimeFilter<"RepositoryScan"> | Date | string
+    strategyVersion?: XOR<StrategyVersionScalarRelationFilter, StrategyVersionWhereInput>
+  }, "id">
+
+  export type RepositoryScanOrderByWithAggregationInput = {
+    id?: SortOrder
+    strategyVersionId?: SortOrder
+    repository?: SortOrder
+    commitSha?: SortOrder
+    state?: SortOrder
+    checks?: SortOrder
+    isPublic?: SortOrderInput | SortOrder
+    isArchived?: SortOrderInput | SortOrder
+    license?: SortOrderInput | SortOrder
+    primaryLanguage?: SortOrderInput | SortOrder
+    repoCreatedAt?: SortOrderInput | SortOrder
+    lastPushedAt?: SortOrderInput | SortOrder
+    stars?: SortOrderInput | SortOrder
+    note?: SortOrderInput | SortOrder
+    scannedAt?: SortOrder
+    _count?: RepositoryScanCountOrderByAggregateInput
+    _avg?: RepositoryScanAvgOrderByAggregateInput
+    _max?: RepositoryScanMaxOrderByAggregateInput
+    _min?: RepositoryScanMinOrderByAggregateInput
+    _sum?: RepositoryScanSumOrderByAggregateInput
+  }
+
+  export type RepositoryScanScalarWhereWithAggregatesInput = {
+    AND?: RepositoryScanScalarWhereWithAggregatesInput | RepositoryScanScalarWhereWithAggregatesInput[]
+    OR?: RepositoryScanScalarWhereWithAggregatesInput[]
+    NOT?: RepositoryScanScalarWhereWithAggregatesInput | RepositoryScanScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"RepositoryScan"> | string
+    strategyVersionId?: StringWithAggregatesFilter<"RepositoryScan"> | string
+    repository?: StringWithAggregatesFilter<"RepositoryScan"> | string
+    commitSha?: StringWithAggregatesFilter<"RepositoryScan"> | string
+    state?: EnumProvenanceStateWithAggregatesFilter<"RepositoryScan"> | $Enums.ProvenanceState
+    checks?: JsonWithAggregatesFilter<"RepositoryScan">
+    isPublic?: BoolNullableWithAggregatesFilter<"RepositoryScan"> | boolean | null
+    isArchived?: BoolNullableWithAggregatesFilter<"RepositoryScan"> | boolean | null
+    license?: StringNullableWithAggregatesFilter<"RepositoryScan"> | string | null
+    primaryLanguage?: StringNullableWithAggregatesFilter<"RepositoryScan"> | string | null
+    repoCreatedAt?: DateTimeNullableWithAggregatesFilter<"RepositoryScan"> | Date | string | null
+    lastPushedAt?: DateTimeNullableWithAggregatesFilter<"RepositoryScan"> | Date | string | null
+    stars?: IntNullableWithAggregatesFilter<"RepositoryScan"> | number | null
+    note?: StringNullableWithAggregatesFilter<"RepositoryScan"> | string | null
+    scannedAt?: DateTimeWithAggregatesFilter<"RepositoryScan"> | Date | string
   }
 
   export type DecisionWhereInput = {
@@ -24604,10 +26192,13 @@ export namespace Prisma {
     configHash: string
     config: JsonNullValueInput | InputJsonValue
     creatorSignature?: string | null
+    repositoryUrl?: string | null
+    repositoryCommit?: string | null
     status?: $Enums.VersionStatus
     createdAt?: Date | string
     strategy: StrategyCreateNestedOneWithoutVersionsInput
     decisions?: DecisionCreateNestedManyWithoutStrategyVersionInput
+    scans?: RepositoryScanCreateNestedManyWithoutStrategyVersionInput
   }
 
   export type StrategyVersionUncheckedCreateInput = {
@@ -24620,9 +26211,12 @@ export namespace Prisma {
     configHash: string
     config: JsonNullValueInput | InputJsonValue
     creatorSignature?: string | null
+    repositoryUrl?: string | null
+    repositoryCommit?: string | null
     status?: $Enums.VersionStatus
     createdAt?: Date | string
     decisions?: DecisionUncheckedCreateNestedManyWithoutStrategyVersionInput
+    scans?: RepositoryScanUncheckedCreateNestedManyWithoutStrategyVersionInput
   }
 
   export type StrategyVersionUpdateInput = {
@@ -24634,10 +26228,13 @@ export namespace Prisma {
     configHash?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     strategy?: StrategyUpdateOneRequiredWithoutVersionsNestedInput
     decisions?: DecisionUpdateManyWithoutStrategyVersionNestedInput
+    scans?: RepositoryScanUpdateManyWithoutStrategyVersionNestedInput
   }
 
   export type StrategyVersionUncheckedUpdateInput = {
@@ -24650,9 +26247,12 @@ export namespace Prisma {
     configHash?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     decisions?: DecisionUncheckedUpdateManyWithoutStrategyVersionNestedInput
+    scans?: RepositoryScanUncheckedUpdateManyWithoutStrategyVersionNestedInput
   }
 
   export type StrategyVersionCreateManyInput = {
@@ -24665,6 +26265,8 @@ export namespace Prisma {
     configHash: string
     config: JsonNullValueInput | InputJsonValue
     creatorSignature?: string | null
+    repositoryUrl?: string | null
+    repositoryCommit?: string | null
     status?: $Enums.VersionStatus
     createdAt?: Date | string
   }
@@ -24678,6 +26280,8 @@ export namespace Prisma {
     configHash?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -24692,8 +26296,135 @@ export namespace Prisma {
     configHash?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RepositoryScanCreateInput = {
+    id?: string
+    repository: string
+    commitSha: string
+    state: $Enums.ProvenanceState
+    checks: JsonNullValueInput | InputJsonValue
+    isPublic?: boolean | null
+    isArchived?: boolean | null
+    license?: string | null
+    primaryLanguage?: string | null
+    repoCreatedAt?: Date | string | null
+    lastPushedAt?: Date | string | null
+    stars?: number | null
+    note?: string | null
+    scannedAt?: Date | string
+    strategyVersion: StrategyVersionCreateNestedOneWithoutScansInput
+  }
+
+  export type RepositoryScanUncheckedCreateInput = {
+    id?: string
+    strategyVersionId: string
+    repository: string
+    commitSha: string
+    state: $Enums.ProvenanceState
+    checks: JsonNullValueInput | InputJsonValue
+    isPublic?: boolean | null
+    isArchived?: boolean | null
+    license?: string | null
+    primaryLanguage?: string | null
+    repoCreatedAt?: Date | string | null
+    lastPushedAt?: Date | string | null
+    stars?: number | null
+    note?: string | null
+    scannedAt?: Date | string
+  }
+
+  export type RepositoryScanUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    repository?: StringFieldUpdateOperationsInput | string
+    commitSha?: StringFieldUpdateOperationsInput | string
+    state?: EnumProvenanceStateFieldUpdateOperationsInput | $Enums.ProvenanceState
+    checks?: JsonNullValueInput | InputJsonValue
+    isPublic?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    isArchived?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    license?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryLanguage?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastPushedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    stars?: NullableIntFieldUpdateOperationsInput | number | null
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    scannedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    strategyVersion?: StrategyVersionUpdateOneRequiredWithoutScansNestedInput
+  }
+
+  export type RepositoryScanUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    strategyVersionId?: StringFieldUpdateOperationsInput | string
+    repository?: StringFieldUpdateOperationsInput | string
+    commitSha?: StringFieldUpdateOperationsInput | string
+    state?: EnumProvenanceStateFieldUpdateOperationsInput | $Enums.ProvenanceState
+    checks?: JsonNullValueInput | InputJsonValue
+    isPublic?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    isArchived?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    license?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryLanguage?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastPushedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    stars?: NullableIntFieldUpdateOperationsInput | number | null
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    scannedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RepositoryScanCreateManyInput = {
+    id?: string
+    strategyVersionId: string
+    repository: string
+    commitSha: string
+    state: $Enums.ProvenanceState
+    checks: JsonNullValueInput | InputJsonValue
+    isPublic?: boolean | null
+    isArchived?: boolean | null
+    license?: string | null
+    primaryLanguage?: string | null
+    repoCreatedAt?: Date | string | null
+    lastPushedAt?: Date | string | null
+    stars?: number | null
+    note?: string | null
+    scannedAt?: Date | string
+  }
+
+  export type RepositoryScanUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    repository?: StringFieldUpdateOperationsInput | string
+    commitSha?: StringFieldUpdateOperationsInput | string
+    state?: EnumProvenanceStateFieldUpdateOperationsInput | $Enums.ProvenanceState
+    checks?: JsonNullValueInput | InputJsonValue
+    isPublic?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    isArchived?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    license?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryLanguage?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastPushedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    stars?: NullableIntFieldUpdateOperationsInput | number | null
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    scannedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RepositoryScanUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    strategyVersionId?: StringFieldUpdateOperationsInput | string
+    repository?: StringFieldUpdateOperationsInput | string
+    commitSha?: StringFieldUpdateOperationsInput | string
+    state?: EnumProvenanceStateFieldUpdateOperationsInput | $Enums.ProvenanceState
+    checks?: JsonNullValueInput | InputJsonValue
+    isPublic?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    isArchived?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    license?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryLanguage?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastPushedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    stars?: NullableIntFieldUpdateOperationsInput | number | null
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    scannedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type DecisionCreateInput = {
@@ -26144,6 +27875,16 @@ export namespace Prisma {
     isNot?: StrategyWhereInput
   }
 
+  export type RepositoryScanListRelationFilter = {
+    every?: RepositoryScanWhereInput
+    some?: RepositoryScanWhereInput
+    none?: RepositoryScanWhereInput
+  }
+
+  export type RepositoryScanOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type StrategyVersionStrategyIdVersionCompoundUniqueInput = {
     strategyId: string
     version: string
@@ -26159,6 +27900,8 @@ export namespace Prisma {
     configHash?: SortOrder
     config?: SortOrder
     creatorSignature?: SortOrder
+    repositoryUrl?: SortOrder
+    repositoryCommit?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
   }
@@ -26172,6 +27915,8 @@ export namespace Prisma {
     modelVersion?: SortOrder
     configHash?: SortOrder
     creatorSignature?: SortOrder
+    repositoryUrl?: SortOrder
+    repositoryCommit?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
   }
@@ -26185,6 +27930,8 @@ export namespace Prisma {
     modelVersion?: SortOrder
     configHash?: SortOrder
     creatorSignature?: SortOrder
+    repositoryUrl?: SortOrder
+    repositoryCommit?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
   }
@@ -26223,6 +27970,128 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumVersionStatusFilter<$PrismaModel>
     _max?: NestedEnumVersionStatusFilter<$PrismaModel>
+  }
+
+  export type EnumProvenanceStateFilter<$PrismaModel = never> = {
+    equals?: $Enums.ProvenanceState | EnumProvenanceStateFieldRefInput<$PrismaModel>
+    in?: $Enums.ProvenanceState[] | ListEnumProvenanceStateFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ProvenanceState[] | ListEnumProvenanceStateFieldRefInput<$PrismaModel>
+    not?: NestedEnumProvenanceStateFilter<$PrismaModel> | $Enums.ProvenanceState
+  }
+
+  export type BoolNullableFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel> | null
+    not?: NestedBoolNullableFilter<$PrismaModel> | boolean | null
+  }
+
+  export type IntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+
+  export type StrategyVersionScalarRelationFilter = {
+    is?: StrategyVersionWhereInput
+    isNot?: StrategyVersionWhereInput
+  }
+
+  export type RepositoryScanCountOrderByAggregateInput = {
+    id?: SortOrder
+    strategyVersionId?: SortOrder
+    repository?: SortOrder
+    commitSha?: SortOrder
+    state?: SortOrder
+    checks?: SortOrder
+    isPublic?: SortOrder
+    isArchived?: SortOrder
+    license?: SortOrder
+    primaryLanguage?: SortOrder
+    repoCreatedAt?: SortOrder
+    lastPushedAt?: SortOrder
+    stars?: SortOrder
+    note?: SortOrder
+    scannedAt?: SortOrder
+  }
+
+  export type RepositoryScanAvgOrderByAggregateInput = {
+    stars?: SortOrder
+  }
+
+  export type RepositoryScanMaxOrderByAggregateInput = {
+    id?: SortOrder
+    strategyVersionId?: SortOrder
+    repository?: SortOrder
+    commitSha?: SortOrder
+    state?: SortOrder
+    isPublic?: SortOrder
+    isArchived?: SortOrder
+    license?: SortOrder
+    primaryLanguage?: SortOrder
+    repoCreatedAt?: SortOrder
+    lastPushedAt?: SortOrder
+    stars?: SortOrder
+    note?: SortOrder
+    scannedAt?: SortOrder
+  }
+
+  export type RepositoryScanMinOrderByAggregateInput = {
+    id?: SortOrder
+    strategyVersionId?: SortOrder
+    repository?: SortOrder
+    commitSha?: SortOrder
+    state?: SortOrder
+    isPublic?: SortOrder
+    isArchived?: SortOrder
+    license?: SortOrder
+    primaryLanguage?: SortOrder
+    repoCreatedAt?: SortOrder
+    lastPushedAt?: SortOrder
+    stars?: SortOrder
+    note?: SortOrder
+    scannedAt?: SortOrder
+  }
+
+  export type RepositoryScanSumOrderByAggregateInput = {
+    stars?: SortOrder
+  }
+
+  export type EnumProvenanceStateWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ProvenanceState | EnumProvenanceStateFieldRefInput<$PrismaModel>
+    in?: $Enums.ProvenanceState[] | ListEnumProvenanceStateFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ProvenanceState[] | ListEnumProvenanceStateFieldRefInput<$PrismaModel>
+    not?: NestedEnumProvenanceStateWithAggregatesFilter<$PrismaModel> | $Enums.ProvenanceState
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumProvenanceStateFilter<$PrismaModel>
+    _max?: NestedEnumProvenanceStateFilter<$PrismaModel>
+  }
+
+  export type BoolNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel> | null
+    not?: NestedBoolNullableWithAggregatesFilter<$PrismaModel> | boolean | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedBoolNullableFilter<$PrismaModel>
+    _max?: NestedBoolNullableFilter<$PrismaModel>
+  }
+
+  export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
   export type EnumDecisionActionFilter<$PrismaModel = never> = {
@@ -26271,11 +28140,6 @@ export namespace Prisma {
     in?: $Enums.DecisionStatus[] | ListEnumDecisionStatusFieldRefInput<$PrismaModel>
     notIn?: $Enums.DecisionStatus[] | ListEnumDecisionStatusFieldRefInput<$PrismaModel>
     not?: NestedEnumDecisionStatusFilter<$PrismaModel> | $Enums.DecisionStatus
-  }
-
-  export type StrategyVersionScalarRelationFilter = {
-    is?: StrategyVersionWhereInput
-    isNot?: StrategyVersionWhereInput
   }
 
   export type OutcomeNullableScalarRelationFilter = {
@@ -27495,11 +29359,25 @@ export namespace Prisma {
     connect?: DecisionWhereUniqueInput | DecisionWhereUniqueInput[]
   }
 
+  export type RepositoryScanCreateNestedManyWithoutStrategyVersionInput = {
+    create?: XOR<RepositoryScanCreateWithoutStrategyVersionInput, RepositoryScanUncheckedCreateWithoutStrategyVersionInput> | RepositoryScanCreateWithoutStrategyVersionInput[] | RepositoryScanUncheckedCreateWithoutStrategyVersionInput[]
+    connectOrCreate?: RepositoryScanCreateOrConnectWithoutStrategyVersionInput | RepositoryScanCreateOrConnectWithoutStrategyVersionInput[]
+    createMany?: RepositoryScanCreateManyStrategyVersionInputEnvelope
+    connect?: RepositoryScanWhereUniqueInput | RepositoryScanWhereUniqueInput[]
+  }
+
   export type DecisionUncheckedCreateNestedManyWithoutStrategyVersionInput = {
     create?: XOR<DecisionCreateWithoutStrategyVersionInput, DecisionUncheckedCreateWithoutStrategyVersionInput> | DecisionCreateWithoutStrategyVersionInput[] | DecisionUncheckedCreateWithoutStrategyVersionInput[]
     connectOrCreate?: DecisionCreateOrConnectWithoutStrategyVersionInput | DecisionCreateOrConnectWithoutStrategyVersionInput[]
     createMany?: DecisionCreateManyStrategyVersionInputEnvelope
     connect?: DecisionWhereUniqueInput | DecisionWhereUniqueInput[]
+  }
+
+  export type RepositoryScanUncheckedCreateNestedManyWithoutStrategyVersionInput = {
+    create?: XOR<RepositoryScanCreateWithoutStrategyVersionInput, RepositoryScanUncheckedCreateWithoutStrategyVersionInput> | RepositoryScanCreateWithoutStrategyVersionInput[] | RepositoryScanUncheckedCreateWithoutStrategyVersionInput[]
+    connectOrCreate?: RepositoryScanCreateOrConnectWithoutStrategyVersionInput | RepositoryScanCreateOrConnectWithoutStrategyVersionInput[]
+    createMany?: RepositoryScanCreateManyStrategyVersionInputEnvelope
+    connect?: RepositoryScanWhereUniqueInput | RepositoryScanWhereUniqueInput[]
   }
 
   export type EnumVersionStatusFieldUpdateOperationsInput = {
@@ -27528,6 +29406,20 @@ export namespace Prisma {
     deleteMany?: DecisionScalarWhereInput | DecisionScalarWhereInput[]
   }
 
+  export type RepositoryScanUpdateManyWithoutStrategyVersionNestedInput = {
+    create?: XOR<RepositoryScanCreateWithoutStrategyVersionInput, RepositoryScanUncheckedCreateWithoutStrategyVersionInput> | RepositoryScanCreateWithoutStrategyVersionInput[] | RepositoryScanUncheckedCreateWithoutStrategyVersionInput[]
+    connectOrCreate?: RepositoryScanCreateOrConnectWithoutStrategyVersionInput | RepositoryScanCreateOrConnectWithoutStrategyVersionInput[]
+    upsert?: RepositoryScanUpsertWithWhereUniqueWithoutStrategyVersionInput | RepositoryScanUpsertWithWhereUniqueWithoutStrategyVersionInput[]
+    createMany?: RepositoryScanCreateManyStrategyVersionInputEnvelope
+    set?: RepositoryScanWhereUniqueInput | RepositoryScanWhereUniqueInput[]
+    disconnect?: RepositoryScanWhereUniqueInput | RepositoryScanWhereUniqueInput[]
+    delete?: RepositoryScanWhereUniqueInput | RepositoryScanWhereUniqueInput[]
+    connect?: RepositoryScanWhereUniqueInput | RepositoryScanWhereUniqueInput[]
+    update?: RepositoryScanUpdateWithWhereUniqueWithoutStrategyVersionInput | RepositoryScanUpdateWithWhereUniqueWithoutStrategyVersionInput[]
+    updateMany?: RepositoryScanUpdateManyWithWhereWithoutStrategyVersionInput | RepositoryScanUpdateManyWithWhereWithoutStrategyVersionInput[]
+    deleteMany?: RepositoryScanScalarWhereInput | RepositoryScanScalarWhereInput[]
+  }
+
   export type DecisionUncheckedUpdateManyWithoutStrategyVersionNestedInput = {
     create?: XOR<DecisionCreateWithoutStrategyVersionInput, DecisionUncheckedCreateWithoutStrategyVersionInput> | DecisionCreateWithoutStrategyVersionInput[] | DecisionUncheckedCreateWithoutStrategyVersionInput[]
     connectOrCreate?: DecisionCreateOrConnectWithoutStrategyVersionInput | DecisionCreateOrConnectWithoutStrategyVersionInput[]
@@ -27540,6 +29432,50 @@ export namespace Prisma {
     update?: DecisionUpdateWithWhereUniqueWithoutStrategyVersionInput | DecisionUpdateWithWhereUniqueWithoutStrategyVersionInput[]
     updateMany?: DecisionUpdateManyWithWhereWithoutStrategyVersionInput | DecisionUpdateManyWithWhereWithoutStrategyVersionInput[]
     deleteMany?: DecisionScalarWhereInput | DecisionScalarWhereInput[]
+  }
+
+  export type RepositoryScanUncheckedUpdateManyWithoutStrategyVersionNestedInput = {
+    create?: XOR<RepositoryScanCreateWithoutStrategyVersionInput, RepositoryScanUncheckedCreateWithoutStrategyVersionInput> | RepositoryScanCreateWithoutStrategyVersionInput[] | RepositoryScanUncheckedCreateWithoutStrategyVersionInput[]
+    connectOrCreate?: RepositoryScanCreateOrConnectWithoutStrategyVersionInput | RepositoryScanCreateOrConnectWithoutStrategyVersionInput[]
+    upsert?: RepositoryScanUpsertWithWhereUniqueWithoutStrategyVersionInput | RepositoryScanUpsertWithWhereUniqueWithoutStrategyVersionInput[]
+    createMany?: RepositoryScanCreateManyStrategyVersionInputEnvelope
+    set?: RepositoryScanWhereUniqueInput | RepositoryScanWhereUniqueInput[]
+    disconnect?: RepositoryScanWhereUniqueInput | RepositoryScanWhereUniqueInput[]
+    delete?: RepositoryScanWhereUniqueInput | RepositoryScanWhereUniqueInput[]
+    connect?: RepositoryScanWhereUniqueInput | RepositoryScanWhereUniqueInput[]
+    update?: RepositoryScanUpdateWithWhereUniqueWithoutStrategyVersionInput | RepositoryScanUpdateWithWhereUniqueWithoutStrategyVersionInput[]
+    updateMany?: RepositoryScanUpdateManyWithWhereWithoutStrategyVersionInput | RepositoryScanUpdateManyWithWhereWithoutStrategyVersionInput[]
+    deleteMany?: RepositoryScanScalarWhereInput | RepositoryScanScalarWhereInput[]
+  }
+
+  export type StrategyVersionCreateNestedOneWithoutScansInput = {
+    create?: XOR<StrategyVersionCreateWithoutScansInput, StrategyVersionUncheckedCreateWithoutScansInput>
+    connectOrCreate?: StrategyVersionCreateOrConnectWithoutScansInput
+    connect?: StrategyVersionWhereUniqueInput
+  }
+
+  export type EnumProvenanceStateFieldUpdateOperationsInput = {
+    set?: $Enums.ProvenanceState
+  }
+
+  export type NullableBoolFieldUpdateOperationsInput = {
+    set?: boolean | null
+  }
+
+  export type NullableIntFieldUpdateOperationsInput = {
+    set?: number | null
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
+  export type StrategyVersionUpdateOneRequiredWithoutScansNestedInput = {
+    create?: XOR<StrategyVersionCreateWithoutScansInput, StrategyVersionUncheckedCreateWithoutScansInput>
+    connectOrCreate?: StrategyVersionCreateOrConnectWithoutScansInput
+    upsert?: StrategyVersionUpsertWithoutScansInput
+    connect?: StrategyVersionWhereUniqueInput
+    update?: XOR<XOR<StrategyVersionUpdateToOneWithWhereWithoutScansInput, StrategyVersionUpdateWithoutScansInput>, StrategyVersionUncheckedUpdateWithoutScansInput>
   }
 
   export type AgentCreateNestedOneWithoutDecisionsInput = {
@@ -28162,6 +30098,63 @@ export namespace Prisma {
     _max?: NestedEnumVersionStatusFilter<$PrismaModel>
   }
 
+  export type NestedEnumProvenanceStateFilter<$PrismaModel = never> = {
+    equals?: $Enums.ProvenanceState | EnumProvenanceStateFieldRefInput<$PrismaModel>
+    in?: $Enums.ProvenanceState[] | ListEnumProvenanceStateFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ProvenanceState[] | ListEnumProvenanceStateFieldRefInput<$PrismaModel>
+    not?: NestedEnumProvenanceStateFilter<$PrismaModel> | $Enums.ProvenanceState
+  }
+
+  export type NestedBoolNullableFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel> | null
+    not?: NestedBoolNullableFilter<$PrismaModel> | boolean | null
+  }
+
+  export type NestedEnumProvenanceStateWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ProvenanceState | EnumProvenanceStateFieldRefInput<$PrismaModel>
+    in?: $Enums.ProvenanceState[] | ListEnumProvenanceStateFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ProvenanceState[] | ListEnumProvenanceStateFieldRefInput<$PrismaModel>
+    not?: NestedEnumProvenanceStateWithAggregatesFilter<$PrismaModel> | $Enums.ProvenanceState
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumProvenanceStateFilter<$PrismaModel>
+    _max?: NestedEnumProvenanceStateFilter<$PrismaModel>
+  }
+
+  export type NestedBoolNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel> | null
+    not?: NestedBoolNullableWithAggregatesFilter<$PrismaModel> | boolean | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedBoolNullableFilter<$PrismaModel>
+    _max?: NestedBoolNullableFilter<$PrismaModel>
+  }
+
+  export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
+  }
+
+  export type NestedFloatNullableFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
+  }
+
   export type NestedEnumDecisionActionFilter<$PrismaModel = never> = {
     equals?: $Enums.DecisionAction | EnumDecisionActionFieldRefInput<$PrismaModel>
     in?: $Enums.DecisionAction[] | ListEnumDecisionActionFieldRefInput<$PrismaModel>
@@ -28349,17 +30342,6 @@ export namespace Prisma {
     _sum?: NestedBigIntNullableFilter<$PrismaModel>
     _min?: NestedBigIntNullableFilter<$PrismaModel>
     _max?: NestedBigIntNullableFilter<$PrismaModel>
-  }
-
-  export type NestedFloatNullableFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel> | null
-    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
-    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
-    lt?: number | FloatFieldRefInput<$PrismaModel>
-    lte?: number | FloatFieldRefInput<$PrismaModel>
-    gt?: number | FloatFieldRefInput<$PrismaModel>
-    gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
   }
 
   export type NestedEnumAnchorStatusWithAggregatesFilter<$PrismaModel = never> = {
@@ -29082,9 +31064,12 @@ export namespace Prisma {
     configHash: string
     config: JsonNullValueInput | InputJsonValue
     creatorSignature?: string | null
+    repositoryUrl?: string | null
+    repositoryCommit?: string | null
     status?: $Enums.VersionStatus
     createdAt?: Date | string
     decisions?: DecisionCreateNestedManyWithoutStrategyVersionInput
+    scans?: RepositoryScanCreateNestedManyWithoutStrategyVersionInput
   }
 
   export type StrategyVersionUncheckedCreateWithoutStrategyInput = {
@@ -29096,9 +31081,12 @@ export namespace Prisma {
     configHash: string
     config: JsonNullValueInput | InputJsonValue
     creatorSignature?: string | null
+    repositoryUrl?: string | null
+    repositoryCommit?: string | null
     status?: $Enums.VersionStatus
     createdAt?: Date | string
     decisions?: DecisionUncheckedCreateNestedManyWithoutStrategyVersionInput
+    scans?: RepositoryScanUncheckedCreateNestedManyWithoutStrategyVersionInput
   }
 
   export type StrategyVersionCreateOrConnectWithoutStrategyInput = {
@@ -29195,6 +31183,8 @@ export namespace Prisma {
     configHash?: StringFilter<"StrategyVersion"> | string
     config?: JsonFilter<"StrategyVersion">
     creatorSignature?: StringNullableFilter<"StrategyVersion"> | string | null
+    repositoryUrl?: StringNullableFilter<"StrategyVersion"> | string | null
+    repositoryCommit?: StringNullableFilter<"StrategyVersion"> | string | null
     status?: EnumVersionStatusFilter<"StrategyVersion"> | $Enums.VersionStatus
     createdAt?: DateTimeFilter<"StrategyVersion"> | Date | string
   }
@@ -29272,6 +31262,50 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type RepositoryScanCreateWithoutStrategyVersionInput = {
+    id?: string
+    repository: string
+    commitSha: string
+    state: $Enums.ProvenanceState
+    checks: JsonNullValueInput | InputJsonValue
+    isPublic?: boolean | null
+    isArchived?: boolean | null
+    license?: string | null
+    primaryLanguage?: string | null
+    repoCreatedAt?: Date | string | null
+    lastPushedAt?: Date | string | null
+    stars?: number | null
+    note?: string | null
+    scannedAt?: Date | string
+  }
+
+  export type RepositoryScanUncheckedCreateWithoutStrategyVersionInput = {
+    id?: string
+    repository: string
+    commitSha: string
+    state: $Enums.ProvenanceState
+    checks: JsonNullValueInput | InputJsonValue
+    isPublic?: boolean | null
+    isArchived?: boolean | null
+    license?: string | null
+    primaryLanguage?: string | null
+    repoCreatedAt?: Date | string | null
+    lastPushedAt?: Date | string | null
+    stars?: number | null
+    note?: string | null
+    scannedAt?: Date | string
+  }
+
+  export type RepositoryScanCreateOrConnectWithoutStrategyVersionInput = {
+    where: RepositoryScanWhereUniqueInput
+    create: XOR<RepositoryScanCreateWithoutStrategyVersionInput, RepositoryScanUncheckedCreateWithoutStrategyVersionInput>
+  }
+
+  export type RepositoryScanCreateManyStrategyVersionInputEnvelope = {
+    data: RepositoryScanCreateManyStrategyVersionInput | RepositoryScanCreateManyStrategyVersionInput[]
+    skipDuplicates?: boolean
+  }
+
   export type StrategyUpsertWithoutVersionsInput = {
     update: XOR<StrategyUpdateWithoutVersionsInput, StrategyUncheckedUpdateWithoutVersionsInput>
     create: XOR<StrategyCreateWithoutVersionsInput, StrategyUncheckedCreateWithoutVersionsInput>
@@ -29313,6 +31347,127 @@ export namespace Prisma {
   export type DecisionUpdateManyWithWhereWithoutStrategyVersionInput = {
     where: DecisionScalarWhereInput
     data: XOR<DecisionUpdateManyMutationInput, DecisionUncheckedUpdateManyWithoutStrategyVersionInput>
+  }
+
+  export type RepositoryScanUpsertWithWhereUniqueWithoutStrategyVersionInput = {
+    where: RepositoryScanWhereUniqueInput
+    update: XOR<RepositoryScanUpdateWithoutStrategyVersionInput, RepositoryScanUncheckedUpdateWithoutStrategyVersionInput>
+    create: XOR<RepositoryScanCreateWithoutStrategyVersionInput, RepositoryScanUncheckedCreateWithoutStrategyVersionInput>
+  }
+
+  export type RepositoryScanUpdateWithWhereUniqueWithoutStrategyVersionInput = {
+    where: RepositoryScanWhereUniqueInput
+    data: XOR<RepositoryScanUpdateWithoutStrategyVersionInput, RepositoryScanUncheckedUpdateWithoutStrategyVersionInput>
+  }
+
+  export type RepositoryScanUpdateManyWithWhereWithoutStrategyVersionInput = {
+    where: RepositoryScanScalarWhereInput
+    data: XOR<RepositoryScanUpdateManyMutationInput, RepositoryScanUncheckedUpdateManyWithoutStrategyVersionInput>
+  }
+
+  export type RepositoryScanScalarWhereInput = {
+    AND?: RepositoryScanScalarWhereInput | RepositoryScanScalarWhereInput[]
+    OR?: RepositoryScanScalarWhereInput[]
+    NOT?: RepositoryScanScalarWhereInput | RepositoryScanScalarWhereInput[]
+    id?: StringFilter<"RepositoryScan"> | string
+    strategyVersionId?: StringFilter<"RepositoryScan"> | string
+    repository?: StringFilter<"RepositoryScan"> | string
+    commitSha?: StringFilter<"RepositoryScan"> | string
+    state?: EnumProvenanceStateFilter<"RepositoryScan"> | $Enums.ProvenanceState
+    checks?: JsonFilter<"RepositoryScan">
+    isPublic?: BoolNullableFilter<"RepositoryScan"> | boolean | null
+    isArchived?: BoolNullableFilter<"RepositoryScan"> | boolean | null
+    license?: StringNullableFilter<"RepositoryScan"> | string | null
+    primaryLanguage?: StringNullableFilter<"RepositoryScan"> | string | null
+    repoCreatedAt?: DateTimeNullableFilter<"RepositoryScan"> | Date | string | null
+    lastPushedAt?: DateTimeNullableFilter<"RepositoryScan"> | Date | string | null
+    stars?: IntNullableFilter<"RepositoryScan"> | number | null
+    note?: StringNullableFilter<"RepositoryScan"> | string | null
+    scannedAt?: DateTimeFilter<"RepositoryScan"> | Date | string
+  }
+
+  export type StrategyVersionCreateWithoutScansInput = {
+    id?: string
+    version: string
+    description: string
+    model: string
+    modelVersion: string
+    configHash: string
+    config: JsonNullValueInput | InputJsonValue
+    creatorSignature?: string | null
+    repositoryUrl?: string | null
+    repositoryCommit?: string | null
+    status?: $Enums.VersionStatus
+    createdAt?: Date | string
+    strategy: StrategyCreateNestedOneWithoutVersionsInput
+    decisions?: DecisionCreateNestedManyWithoutStrategyVersionInput
+  }
+
+  export type StrategyVersionUncheckedCreateWithoutScansInput = {
+    id?: string
+    strategyId: string
+    version: string
+    description: string
+    model: string
+    modelVersion: string
+    configHash: string
+    config: JsonNullValueInput | InputJsonValue
+    creatorSignature?: string | null
+    repositoryUrl?: string | null
+    repositoryCommit?: string | null
+    status?: $Enums.VersionStatus
+    createdAt?: Date | string
+    decisions?: DecisionUncheckedCreateNestedManyWithoutStrategyVersionInput
+  }
+
+  export type StrategyVersionCreateOrConnectWithoutScansInput = {
+    where: StrategyVersionWhereUniqueInput
+    create: XOR<StrategyVersionCreateWithoutScansInput, StrategyVersionUncheckedCreateWithoutScansInput>
+  }
+
+  export type StrategyVersionUpsertWithoutScansInput = {
+    update: XOR<StrategyVersionUpdateWithoutScansInput, StrategyVersionUncheckedUpdateWithoutScansInput>
+    create: XOR<StrategyVersionCreateWithoutScansInput, StrategyVersionUncheckedCreateWithoutScansInput>
+    where?: StrategyVersionWhereInput
+  }
+
+  export type StrategyVersionUpdateToOneWithWhereWithoutScansInput = {
+    where?: StrategyVersionWhereInput
+    data: XOR<StrategyVersionUpdateWithoutScansInput, StrategyVersionUncheckedUpdateWithoutScansInput>
+  }
+
+  export type StrategyVersionUpdateWithoutScansInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    model?: StringFieldUpdateOperationsInput | string
+    modelVersion?: StringFieldUpdateOperationsInput | string
+    configHash?: StringFieldUpdateOperationsInput | string
+    config?: JsonNullValueInput | InputJsonValue
+    creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    strategy?: StrategyUpdateOneRequiredWithoutVersionsNestedInput
+    decisions?: DecisionUpdateManyWithoutStrategyVersionNestedInput
+  }
+
+  export type StrategyVersionUncheckedUpdateWithoutScansInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    strategyId?: StringFieldUpdateOperationsInput | string
+    version?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    model?: StringFieldUpdateOperationsInput | string
+    modelVersion?: StringFieldUpdateOperationsInput | string
+    configHash?: StringFieldUpdateOperationsInput | string
+    config?: JsonNullValueInput | InputJsonValue
+    creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    decisions?: DecisionUncheckedUpdateManyWithoutStrategyVersionNestedInput
   }
 
   export type AgentCreateWithoutDecisionsInput = {
@@ -29373,9 +31528,12 @@ export namespace Prisma {
     configHash: string
     config: JsonNullValueInput | InputJsonValue
     creatorSignature?: string | null
+    repositoryUrl?: string | null
+    repositoryCommit?: string | null
     status?: $Enums.VersionStatus
     createdAt?: Date | string
     strategy: StrategyCreateNestedOneWithoutVersionsInput
+    scans?: RepositoryScanCreateNestedManyWithoutStrategyVersionInput
   }
 
   export type StrategyVersionUncheckedCreateWithoutDecisionsInput = {
@@ -29388,8 +31546,11 @@ export namespace Prisma {
     configHash: string
     config: JsonNullValueInput | InputJsonValue
     creatorSignature?: string | null
+    repositoryUrl?: string | null
+    repositoryCommit?: string | null
     status?: $Enums.VersionStatus
     createdAt?: Date | string
+    scans?: RepositoryScanUncheckedCreateNestedManyWithoutStrategyVersionInput
   }
 
   export type StrategyVersionCreateOrConnectWithoutDecisionsInput = {
@@ -29558,9 +31719,12 @@ export namespace Prisma {
     configHash?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     strategy?: StrategyUpdateOneRequiredWithoutVersionsNestedInput
+    scans?: RepositoryScanUpdateManyWithoutStrategyVersionNestedInput
   }
 
   export type StrategyVersionUncheckedUpdateWithoutDecisionsInput = {
@@ -29573,8 +31737,11 @@ export namespace Prisma {
     configHash?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    scans?: RepositoryScanUncheckedUpdateManyWithoutStrategyVersionNestedInput
   }
 
   export type OutcomeUpsertWithoutDecisionInput = {
@@ -30908,6 +33075,8 @@ export namespace Prisma {
     configHash: string
     config: JsonNullValueInput | InputJsonValue
     creatorSignature?: string | null
+    repositoryUrl?: string | null
+    repositoryCommit?: string | null
     status?: $Enums.VersionStatus
     createdAt?: Date | string
   }
@@ -30921,9 +33090,12 @@ export namespace Prisma {
     configHash?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     decisions?: DecisionUpdateManyWithoutStrategyVersionNestedInput
+    scans?: RepositoryScanUpdateManyWithoutStrategyVersionNestedInput
   }
 
   export type StrategyVersionUncheckedUpdateWithoutStrategyInput = {
@@ -30935,9 +33107,12 @@ export namespace Prisma {
     configHash?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     decisions?: DecisionUncheckedUpdateManyWithoutStrategyVersionNestedInput
+    scans?: RepositoryScanUncheckedUpdateManyWithoutStrategyVersionNestedInput
   }
 
   export type StrategyVersionUncheckedUpdateManyWithoutStrategyInput = {
@@ -30949,6 +33124,8 @@ export namespace Prisma {
     configHash?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     creatorSignature?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repositoryCommit?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumVersionStatusFieldUpdateOperationsInput | $Enums.VersionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -30969,6 +33146,23 @@ export namespace Prisma {
     decidedAt: Date | string
     committedAt?: Date | string
     expiresAt?: Date | string | null
+  }
+
+  export type RepositoryScanCreateManyStrategyVersionInput = {
+    id?: string
+    repository: string
+    commitSha: string
+    state: $Enums.ProvenanceState
+    checks: JsonNullValueInput | InputJsonValue
+    isPublic?: boolean | null
+    isArchived?: boolean | null
+    license?: string | null
+    primaryLanguage?: string | null
+    repoCreatedAt?: Date | string | null
+    lastPushedAt?: Date | string | null
+    stars?: number | null
+    note?: string | null
+    scannedAt?: Date | string
   }
 
   export type DecisionUpdateWithoutStrategyVersionInput = {
@@ -31029,6 +33223,57 @@ export namespace Prisma {
     decidedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     committedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     expiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type RepositoryScanUpdateWithoutStrategyVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    repository?: StringFieldUpdateOperationsInput | string
+    commitSha?: StringFieldUpdateOperationsInput | string
+    state?: EnumProvenanceStateFieldUpdateOperationsInput | $Enums.ProvenanceState
+    checks?: JsonNullValueInput | InputJsonValue
+    isPublic?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    isArchived?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    license?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryLanguage?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastPushedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    stars?: NullableIntFieldUpdateOperationsInput | number | null
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    scannedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RepositoryScanUncheckedUpdateWithoutStrategyVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    repository?: StringFieldUpdateOperationsInput | string
+    commitSha?: StringFieldUpdateOperationsInput | string
+    state?: EnumProvenanceStateFieldUpdateOperationsInput | $Enums.ProvenanceState
+    checks?: JsonNullValueInput | InputJsonValue
+    isPublic?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    isArchived?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    license?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryLanguage?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastPushedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    stars?: NullableIntFieldUpdateOperationsInput | number | null
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    scannedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RepositoryScanUncheckedUpdateManyWithoutStrategyVersionInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    repository?: StringFieldUpdateOperationsInput | string
+    commitSha?: StringFieldUpdateOperationsInput | string
+    state?: EnumProvenanceStateFieldUpdateOperationsInput | $Enums.ProvenanceState
+    checks?: JsonNullValueInput | InputJsonValue
+    isPublic?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    isArchived?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    license?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryLanguage?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastPushedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    stars?: NullableIntFieldUpdateOperationsInput | number | null
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    scannedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type CorrectionCreateManyDecisionInput = {

@@ -13,6 +13,7 @@ import * as vault from "./vault";
 import * as merit from "./merit";
 import { getVenueAdapter } from "./venues";
 import * as market from "./hyperliquid";
+import * as rwa from "./rwa";
 import * as wallet from "./wallet";
 import * as trade from "./trade";
 import * as deposit from "./deposit";
@@ -372,6 +373,10 @@ app.whenReady().then(() => {
   handle("market:snapshot", (symbol: string, timeframe: market.Timeframe) =>
     market.snapshot(symbol, timeframe),
   );
+
+  // `force` skips the module's own cache, for the panel's refresh button.
+  handle("rwa:snapshot", (force?: boolean) => rwa.snapshot(Boolean(force)));
+  handle("rwa:logos", () => rwa.logos());
 
   handle("venues:positions", async () => {
     const adapter = getVenueAdapter();

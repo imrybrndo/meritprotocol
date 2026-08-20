@@ -195,6 +195,16 @@ result.computedRoot; // recomputed locally, not taken from the API`),
           note(
             "If you see LOCAL_ONLY on an anchor, no blockchain write occurred. The record is internally consistent but is not independently verifiable.",
           ),
+          h3("Source provenance"),
+          p(
+            "A strategy version may declare a public repository. The URL is resolved once, at registration, to a full commit SHA — a bare URL points at a moving target, and tomorrow's push would silently change what yesterday's decision was made under. Because a commit SHA hashes the whole tree, the content behind it cannot change without the SHA changing, so anyone can clone it and read exactly what was registered.",
+          ),
+          p(
+            "A scheduled scan re-asks whether the repository is still public and still contains that commit. That is the half which catches a repository being deleted or made private after a bad month — an event that would otherwise leave no trace. Scans are append-only, so the sequence itself is the record.",
+          ),
+          note(
+            "A passing scan does NOT establish that the agent ran that code. An operator can link an immaculate repository and run something else. Disclosure is not attestation, and no part of a scan is an input to the MERIT Score — popularity is purchasable, and a purchasable input is exactly what the scoring invariant exists to keep out.",
+          ),
           h3("Adding another chain"),
           p(
             "Chain-specific code sits behind a three-method interface — anchor, getAnchor, verifyAnchor. A second chain is a new adapter, not a change to the protocol.",
@@ -568,8 +578,14 @@ const { valid, computedRoot } = verifyProofOffline(proof);`),
       {
         slug: "roadmap",
         title: "Roadmap",
-        summary: "What exists, and what comes next.",
+        summary: "The order of construction, and what gates each step.",
         blocks: [
+          p(
+            "Proof first, then reputation, then capital. The order below is the protocol's own argument applied to its own construction: each phase is a precondition for the next rather than a preference, and where that is not obvious the phase says why it sits where it does.",
+          ),
+          p(
+            "Every phase is gated by a definition of done rather than by a date. A phase that cannot state what would prove it finished is not ready to be started.",
+          ),
           h3("Implemented"),
           ul([
             "Agent registry with immutable strategy and model versioning.",
@@ -584,16 +600,74 @@ const { valid, computedRoot } = verifyProofOffline(proof);`),
             "Scheduled sealing on a size-or-age policy, so a commitment is anchored without an operator running anything.",
             "Corrections as append-only annotations, leaving the original decision and its commitment intact.",
             "Recorded score and tier history, written only when an agent's standing actually moves.",
+            "Source provenance: a strategy version can pin itself to a public commit, re-scanned on a schedule.",
           ]),
-          h3("Next"),
-          ul([
-            "Self-serve onboarding, so an operator can register an agent and issue a key without shell access to the server.",
-            "Signed agent actions, so a decision is attributable to a wallet as well as an API key.",
-            "Additional chain adapters behind the existing interface.",
-            "Independent verifier network, so verification does not depend on MERIT's uptime.",
-            "Webhooks for anchor confirmation and reputation changes.",
-            "Capital network — allocation against verified reputation, non-custodial by design.",
-          ]),
+          h3("The order of what remains"),
+          table(
+            ["Phase", "Focus", "Done when"],
+            [
+              [
+                "1",
+                "The way in",
+                "A stranger reaches their first committed decision without our shell.",
+              ],
+              [
+                "2",
+                "Attribution",
+                "A decision is bound to a wallet signature, not only an API key.",
+              ],
+              [
+                "3",
+                "Coverage honesty",
+                "A profile shows what is not proven as clearly as what is.",
+              ],
+              [
+                "4",
+                "Distribution",
+                "Third parties build on MERIT without talking to us.",
+              ],
+              [
+                "5",
+                "Independence",
+                "Verification survives MERIT's API being down.",
+              ],
+              [
+                "6",
+                "Capital",
+                "The measured gates are passed, rather than a date reached.",
+              ],
+            ],
+          ),
+          h3("1 — The way in"),
+          p(
+            "Registering an agent requires the agents:write scope, and today the only credential carrying it comes from a script run on the server. Wallet sign-in already exists and already mints keys; what it mints cannot register anything. Self-serve onboarding closes that gap with an account surface, key management that shows a secret exactly once, and agent registration from the interface.",
+          ),
+          p(
+            "It is first because every phase after it needs real agents to be tested against. Exercising attribution or coverage on seeded demo agents only proves the seed script works.",
+          ),
+          h3("2 — Signed agent actions"),
+          p(
+            "A decision is currently bound to an API key, and an API key can be lent. A signature over the same canonical encoding binds it to an identity instead, adds an eighth verification check, and travels inside the proof bundle so the SDK can confirm it offline.",
+          ),
+          h3("3 — Coverage honesty"),
+          p(
+            "Selective registration is the largest hole in the thesis, and it is measured rather than assumed — but measured somewhere nobody looks. Proof coverage, cadence and abstention move from score components to surfaces: a badge on the profile, a column on the leaderboard, and a panel stating plainly what a record does not establish.",
+          ),
+          p(
+            "This is what decides whether a MERIT figure means the record is intact or the performance is intact. The distance between those two sentences is the first question an allocator asks.",
+          ),
+          h3("4 — Distribution"),
+          p(
+            "Webhooks for anchor confirmation and tier changes, an embeddable badge, and an update channel for the console — so a MERIT reputation is usable somewhere that is not our own site. It follows coverage honesty on purpose: distributing earlier would spread numbers whose limits are unreadable.",
+          ),
+          h3("5 — Independence from MERIT"),
+          p(
+            "Verifying without trusting MERIT is already true cryptographically, because the proof bundle is self-contained. In practice it still runs through our uptime. An independent verifier network and further chain adapters make the sentence true without qualification.",
+          ),
+          h3("6 — Capital network"),
+          p(
+            "Allocation against verified reputation, non-custodial by design, and entered only once three conditions hold: real agents with at least 180 days of operating history, a median proof coverage above a threshold fixed before the data is examined, and at least one independent verifier live.",
+          ),
           note(
             "The capital layer is deliberately last. Allocating against a reputation system that has not been stress-tested would invert the order this protocol argues for: proof first, then reputation, then capital.",
           ),

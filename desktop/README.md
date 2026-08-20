@@ -57,7 +57,18 @@ Then open **Settings** and provide:
 |---|---|
 | MERIT endpoint | Your deployment. Defaults to `http://localhost:3000`. |
 | MERIT API key | `npm run key:create -- --email you@example.com` in the repo root. |
-| Anthropic API key | Powers the chat agent. Optional — the other panels work without it. |
+
+The chat agent's own key sits under **Chat agent**, and the identical controls
+are mounted in the **Chat** panel behind the model chip in its header — one
+implementation, reachable from wherever you happen to be when you need it.
+Either provider works —
+
+| Provider | What it needs |
+|---|---|
+| Anthropic | A key from `console.anthropic.com`. The model is pinned to `claude-opus-5`. |
+| OpenRouter | A key from `openrouter.ai/keys`, plus a model from the catalogue. Only tool-capable models are listed: an agent that cannot call `commit_decision` cannot do this job. |
+
+Chat is optional — every other panel works without a model connected.
 
 ## Packaging a macOS build
 
@@ -129,16 +140,59 @@ with a Developer ID and notarisation.
 
 ## Panels
 
-- **Chat** — the operator agent. It can read agents and open decisions, and it
-  can seal a decision. Every commit is gated on explicit approval; the model
-  proposes, a person decides, the protocol records.
+- **Chat** — the operator agent, on Anthropic or on any tool-capable OpenRouter
+  model. It can read agents and open decisions, and it can seal a decision.
+  Every commit is gated on explicit approval; the model proposes, a person
+  decides, the protocol records. The model chip in the header configures the
+  key and the model without leaving the panel; the same controls live in
+  Settings. The key itself is held by the main process and never reaches the
+  window.
 - **Agents** — agents registered on the deployment.
 - **Perps** — live Phoenix perpetual-futures market data: 65 markets across
   crypto and equities, candlesticks with a volume pane, orderbook, and whatever
   MERIT has committed on the same asset. Read-only; the console never places an
   order, because doing so would mean holding a signing key.
+- **RWA** — tokenized real-world assets: treasuries, private credit and gold,
+  read live from Ethereum. Supply comes from each token contract and the gold
+  price from a Chainlink feed, so every figure is an `eth_call` an operator can
+  repeat — each screen names the block it was read at. Instruments whose NAV is
+  published off chain show a supply and no dollar value, deliberately. Any
+  instrument can be handed to Chat to think through and seal a commitment on.
 - **Liquidity** — venue-reported LP positions. Empty until an adapter exists.
-- **Settings** — endpoint and credentials.
+- **Settings** — account, recovery, and the chat agent's provider, key and
+  model.
+
+## Real-world assets
+
+The RWA panel holds a registry of eleven instruments in `src/main/rwa.ts`, each
+verified against its own contract before it was added — the symbol the chain
+reports is re-checked on every refresh, and a mismatch blanks that row rather
+than showing numbers under the wrong name.
+
+What can be valued is decided per instrument, not per row of the table:
+
+| Denomination | Value shown | Instruments |
+|---|---|---|
+| `usd-par` | Supply, which is the dollar figure — the unit is held at $1 by construction | BUIDL, STBT, USDM |
+| `ounce` | Supply × Chainlink XAU/USD, one fine troy ounce per token | PAXG, XAUT |
+| `share` | None. The NAV moves and is published off chain | USDY, OUSG, USTB, TBILL, bIB01, FIDU |
+
+The empty column is the point. A console arguing that a record is worth only its
+provenance cannot print an AUM it took from a press release.
+
+Issuer logos come from CoinGecko's Ethereum token list — one request, keyed by
+contract address rather than by ticker so a mark cannot be attached to the wrong
+token by a symbol collision. Nine of the eleven are in it; the other two fall
+back to a monogram tinted by asset class. Artwork is fetched in the main process
+and handed over as data URIs, because the renderer's CSP grants it no network of
+its own; the size cap and `image/*` check that make that safe live in
+`src/main/logos.ts`, shared with the market panel.
+
+Reads go to the same public endpoints the wallet balance check uses
+(`ethereum-rpc.publicnode.com`, falling back to `1rpc.io`), need no key, and are
+cached for a minute so navigating between panels does not re-read eleven
+contracts. The chat agent reaches the same snapshot through its
+`list_rwa_assets` tool, so what it cites and what the panel shows cannot differ.
 
 ## Market data
 

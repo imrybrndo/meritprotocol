@@ -55,6 +55,15 @@ const ICONS = {
     ["circle", { cx: "12", cy: "12", r: "3" }],
   ], // settings
 
+  rwa: [
+    ["path", { d: "M10 18v-7" }],
+    ["path", { d: "M11.12 2.198a2 2 0 0 1 1.76.006l7.866 3.847c.476.233.31.949-.22.949H3.474c-.53 0-.695-.716-.22-.949z" }],
+    ["path", { d: "M14 18v-7" }],
+    ["path", { d: "M18 18v-7" }],
+    ["path", { d: "M3 22h18" }],
+    ["path", { d: "M6 18v-7" }],
+  ], // landmark
+
   dashboard: [
     ["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1" }],
     ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1" }],
@@ -78,6 +87,24 @@ const ICONS = {
   plus: [["path", { d: "M5 12h14" }], ["path", { d: "M12 5v14" }]], // plus
   search: [["path", { d: "m21 21-4.34-4.34" }], ["circle", { cx: "11", cy: "11", r: "8" }]], // search
   next: [["path", { d: "M5 12h14" }], ["path", { d: "m12 5 7 7-7 7" }]], // arrow-right
+  close: [["path", { d: "M18 6 6 18" }], ["path", { d: "m6 6 12 12" }]], // x
+  refresh: [
+    ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" }],
+    ["path", { d: "M21 3v5h-5" }],
+    ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" }],
+    ["path", { d: "M8 16H3v5" }],
+  ], // refresh-cw
+  chevron: [["path", { d: "m6 9 6 6 6-6" }]], // chevron-down
+  latest: [["path", { d: "M12 5v14" }], ["path", { d: "m19 12-7 7-7-7" }]], // arrow-down
+  model: [
+    ["path", { d: "M12 2a3 3 0 0 0-3 3v1a3 3 0 0 0-3 3v1a3 3 0 0 0 0 6v1a3 3 0 0 0 3 3v1a3 3 0 0 0 6 0v-1a3 3 0 0 0 3-3v-1a3 3 0 0 0 0-6V9a3 3 0 0 0-3-3V5a3 3 0 0 0-3-3" }],
+    ["path", { d: "M9 12h6" }],
+  ], // brain-circuit, simplified
+  key: [
+    ["path", { d: "m15.5 7.5 3 3L22 7l-3-3" }],
+    ["path", { d: "m21 2-9.6 9.6" }],
+    ["circle", { cx: "7.5", cy: "15.5", r: "5.5" }],
+  ], // key-round
 
   /* state — the same three the site's verification report uses. */
   check: [["path", { d: "M20 6 9 17l-5-5" }]], // check

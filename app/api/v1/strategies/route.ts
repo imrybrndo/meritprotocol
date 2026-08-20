@@ -6,6 +6,7 @@ import { createStrategySchema, createStrategyVersionSchema } from "@/lib/validat
 import { hashStrategyConfig } from "@/lib/crypto/hash";
 import { emitEvent } from "@/lib/events";
 import { ProtocolError } from "@/lib/services/decisions";
+import { freezeRepository } from "@/lib/services/provenance";
 
 export const runtime = "nodejs";
 
@@ -50,6 +51,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Resolved before the transaction opens: this is a network call to a
+      // third party, and holding a database transaction across it would put
+      // GitHub's latency inside a lock on the strategy's versions.
+      const repository = body.repositoryUrl
+        ? await freezeRepository(body.repositoryUrl, body.repositoryRef)
+        : null;
+
       const version = await prisma.$transaction(async (tx) => {
         // Previous versions are superseded, never edited or deleted.
         await tx.strategyVersion.updateMany({
@@ -67,6 +75,8 @@ export async function POST(request: NextRequest) {
             configHash: hashStrategyConfig(body.config as Record<string, never>),
             config: body.config as never,
             creatorSignature: body.creatorSignature ?? null,
+            repositoryUrl: repository?.repositoryUrl ?? null,
+            repositoryCommit: repository?.repositoryCommit ?? null,
             status: "ACTIVE",
           },
         });

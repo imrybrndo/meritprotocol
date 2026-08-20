@@ -84,6 +84,11 @@ interface Bridge {
     decisions(query: { agentId?: string; status?: string }): Promise<Result<Decision[]>>;
   };
   venues: { positions(): Promise<Result<VenueState>> };
+  rwa: {
+    snapshot(force?: boolean): Promise<Result<RwaSnapshot>>;
+    /** Issuer artwork as data URIs, keyed by symbol. Missing is normal. */
+    logos(): Promise<Result<Record<string, string>>>;
+  };
   market: {
     list(): Promise<Result<MarketRow[]>>;
     overview(): Promise<Result<MarketPulse[]>>;
@@ -153,6 +158,27 @@ interface VenueState {
   lp: Array<Record<string, string | boolean>>;
 }
 interface Approval { id: string; summary: string; input: Record<string, unknown> }
+
+type RwaClass = "treasury" | "credit" | "commodity";
+/** What one token is a claim on — and therefore whether a value can be stated. */
+type RwaDenomination = "usd-par" | "share" | "ounce";
+interface RwaReading {
+  symbol: string; name: string; issuer: string;
+  assetClass: RwaClass; denomination: RwaDenomination;
+  address: string; note: string;
+  decimals: number | null;
+  supply: number | null;
+  /** Dollars, only where derivable on chain. Null is a real answer, not a gap. */
+  value: number | null;
+  valueBasis: "oracle" | "par" | null;
+  onChainSymbol: string | null;
+  error: string | null;
+}
+interface RwaSnapshot {
+  chain: string; source: string; block: number; readAt: string;
+  gold: { usdPerOunce: number; updatedAt: string; feed: string } | null;
+  instruments: RwaReading[];
+}
 interface MarketRow {
   symbol: string; name: string; openInterest: number;
   maxLeverage: number; description: string | null;
@@ -226,9 +252,13 @@ function show(name: string): void {
   if (name === "dashboard") void loadDashboard();
   if (name === "agents") void loadAgents();
   if (name === "perps") void loadPerps();
+  if (name === "rwa") void loadRwa();
   if (name === "lp") void loadLp();
   if (name === "settings") void loadSettings();
+  if (name === "chat") void enterModelPanel();
 }
+
+$("#rwa-refresh").addEventListener("click", () => void loadRwa(true));
 
 $("#nav").addEventListener("click", (event) => {
   const target = (event.target as HTMLElement).closest<HTMLElement>(".nav-item");
@@ -1755,43 +1785,410 @@ async function loadLp(): Promise<void> {
   body.replaceChildren(table);
 }
 
-/* -------------------------------------------------------------- settings -- */
+/* -------------------------------------------------------------------- rwa -- */
+/*
+ * Tokenized real-world assets. The panel's one job beyond showing the numbers
+ * is showing where they came from: every screen here carries the block it was
+ * read at, and an instrument whose dollar value is not derivable on chain says
+ * so rather than displaying an estimate.
+ */
 
-function credentialField(opts: {
-  label: string; hint: string; name: string; present: boolean; placeholder: string;
-}): HTMLElement {
-  const field = el("div", "field");
-  field.append(el("label", undefined, opts.label));
-  field.append(el("p", "hint", opts.hint));
+const RWA_CLASSES: Array<[RwaClass | "all", string]> = [
+  ["all", "All"],
+  ["treasury", "Treasuries"],
+  ["credit", "Credit"],
+  ["commodity", "Commodities"],
+];
 
-  const row = el("div", "field-row");
-  const input = el("input") as HTMLInputElement;
-  input.type = "password";
-  input.placeholder = opts.present ? "•••••••• stored" : opts.placeholder;
-  row.append(input);
+const CLASS_LABELS: Record<RwaClass, string> = {
+  treasury: "Treasuries & cash",
+  credit: "Private credit",
+  commodity: "Commodities",
+};
 
-  const save = el("button", "act is-primary", "Save") as HTMLButtonElement;
-  save.addEventListener("click", async () => {
-    if (!input.value.trim()) return;
-    const result = await api.vault.setSecret(opts.name, input.value.trim());
-    input.value = "";
-    if (!result.ok) window.alert(result.error);
-    void loadSettings();
-  });
-  row.append(save);
+let rwaState: RwaSnapshot | null = null;
+let rwaFilter: RwaClass | "all" = "all";
+let rwaSelected: string | null = null;
+/** Decisions MERIT holds, for matching against instruments. Null until read. */
+let rwaDecisions: Decision[] | null = null;
+let rwaDecisionsError: string | null = null;
+/** Issuer artwork, keyed by symbol. Empty until it arrives, and never required. */
+let rwaLogos: Record<string, string> = {};
 
-  if (opts.present) {
-    const clear = el("button", "act", "Remove") as HTMLButtonElement;
-    clear.addEventListener("click", async () => {
-      await api.vault.clearSecret(opts.name);
-      void loadSettings();
-    });
-    row.append(clear);
+function rwaVisible(): RwaReading[] {
+  const all = rwaState?.instruments ?? [];
+  return rwaFilter === "all" ? all : all.filter((row) => row.assetClass === rwaFilter);
+}
+
+/**
+ * The issuer's mark, or its initials. Two of the eleven instruments publish no
+ * artwork anywhere this console can reach, so the fallback is a real design
+ * rather than a placeholder: a monogram tinted by asset class, which reads as
+ * deliberate next to the nine that do have a logo.
+ */
+function rwaLogo(row: RwaReading, size: number): HTMLElement {
+  const uri = rwaLogos[row.symbol];
+
+  if (!uri) {
+    const mark = el("span", `rwa-logo-fallback is-${row.assetClass}`, row.symbol.slice(0, 2));
+    mark.style.width = `${size}px`;
+    mark.style.height = `${size}px`;
+    mark.style.fontSize = `${Math.max(8, Math.round(size * 0.38))}px`;
+    return mark;
   }
 
-  field.append(row);
-  return field;
+  const img = el("img", "rwa-logo") as HTMLImageElement;
+  img.src = uri;
+  img.alt = "";
+  img.width = size;
+  img.height = size;
+  return img;
 }
+
+/**
+ * Artwork arrives after the numbers do — it is one request against a token list
+ * and eleven small images, and no figure on screen waits for it.
+ */
+async function loadRwaLogos(): Promise<void> {
+  if (Object.keys(rwaLogos).length > 0) return;
+
+  const result = await api.rwa.logos();
+  if (!result.ok || Object.keys(result.data).length === 0) return;
+
+  rwaLogos = result.data;
+  renderRwaRows();
+  renderRwaView();
+}
+
+/** Supply is a token count, not money: never abbreviate it into ambiguity. */
+function formatUnits(value: number): string {
+  return value.toLocaleString("en-US", { maximumFractionDigits: value < 1000 ? 2 : 0 });
+}
+
+function formatUsd(value: number): string {
+  return `$${formatCompact(value)}`;
+}
+
+/**
+ * How the dollar figure was arrived at — or that there is not one. This is the
+ * whole argument of the panel in one line, so it is never abbreviated away.
+ */
+function valueBasis(row: RwaReading): string {
+  if (row.valueBasis === "oracle") return "supply × Chainlink XAU/USD";
+  if (row.valueBasis === "par") return "supply, held at $1 by construction";
+  return "NAV published off chain — no value read";
+}
+
+async function loadRwa(force = false): Promise<void> {
+  const rows = $("#rwa-rows");
+  const view = $("#rwa-view");
+
+  if (!rwaState) {
+    rows.replaceChildren(el("p", "rail-note", "Reading the chain…"));
+  }
+
+  const result = await api.rwa.snapshot(force);
+  if (!result.ok) {
+    rows.replaceChildren();
+    return fail(view, result.error);
+  }
+
+  rwaState = result.data;
+  if (!rwaSelected || !rwaState.instruments.some((row) => row.symbol === rwaSelected)) {
+    rwaSelected = rwaVisible()[0]?.symbol ?? null;
+  }
+
+  renderRwaClasses();
+  renderRwaRows();
+  renderRwaView();
+  void loadRwaLogos();
+
+  // Committed calls are protocol state, not chain state: a deployment that is
+  // down must not take the market panel with it. Re-read on every visit, since
+  // a call sealed in Chat a moment ago belongs on the instrument it was about.
+  const decisions = await api.protocol.decisions({});
+  if (decisions.ok) {
+    rwaDecisions = decisions.data;
+    rwaDecisionsError = null;
+  } else {
+    rwaDecisionsError = decisions.error;
+  }
+  renderRwaView();
+}
+
+function renderRwaClasses(): void {
+  const host = $("#rwa-classes");
+  host.replaceChildren(
+    ...RWA_CLASSES.map(([value, label]) => {
+      const button = el(
+        "button",
+        rwaFilter === value ? "is-active" : undefined,
+        label,
+      ) as HTMLButtonElement;
+      button.type = "button";
+      button.addEventListener("click", () => {
+        rwaFilter = value;
+        const visible = rwaVisible();
+        if (!visible.some((row) => row.symbol === rwaSelected)) {
+          rwaSelected = visible[0]?.symbol ?? null;
+        }
+        renderRwaClasses();
+        renderRwaRows();
+        renderRwaView();
+      });
+      return button;
+    }),
+  );
+}
+
+function renderRwaRows(): void {
+  const host = $("#rwa-rows");
+  const visible = rwaVisible();
+
+  if (visible.length === 0) {
+    host.replaceChildren(el("p", "rail-note", "Nothing in this class."));
+    return;
+  }
+
+  host.replaceChildren(
+    ...visible.map((row) => {
+      const node = el(
+        "button",
+        `rwa-row ${row.symbol === rwaSelected ? "is-active" : ""}`,
+      ) as HTMLButtonElement;
+      node.type = "button";
+
+      node.append(rwaLogo(row, 22));
+
+      const body = el("div", "rwa-row-body");
+      const head = el("div", "rwa-row-head");
+      head.append(el("b", undefined, row.symbol));
+      if (row.error) {
+        head.append(tag("tag", "unread", "alert"));
+      } else if (row.value !== null) {
+        head.append(el("span", "rwa-row-value", formatUsd(row.value)));
+      } else {
+        head.append(el("span", "rwa-row-value is-muted", `${formatCompact(row.supply ?? 0)} units`));
+      }
+      body.append(head);
+      body.append(el("span", "rwa-row-issuer", row.issuer));
+      node.append(body);
+
+      node.addEventListener("click", () => {
+        rwaSelected = row.symbol;
+        renderRwaRows();
+        renderRwaView();
+      });
+      return node;
+    }),
+  );
+}
+
+/** A number with its label, matching the market panel's stat strip. */
+function rwaStat(label: string, value: string, note?: string): HTMLElement {
+  const cell = el("div", "rwa-stat");
+  cell.append(el("span", "rwa-stat-label", label));
+  cell.append(el("span", "rwa-stat-value", value));
+  if (note) cell.append(el("span", "rwa-stat-note", note));
+  return cell;
+}
+
+function renderRwaView(): void {
+  const view = $("#rwa-view");
+  const row = rwaState?.instruments.find((entry) => entry.symbol === rwaSelected);
+
+  if (!rwaState || !row) {
+    view.replaceChildren(el("div", "empty", "Nothing selected."));
+    return;
+  }
+
+  const body = el("div", "rwa-detail");
+
+  /* identity ------------------------------------------------------------- */
+  const head = el("header", "rwa-detail-head");
+  const title = el("div");
+  const line = el("h2");
+  line.append(rwaLogo(row, 30));
+  line.append(el("span", "rwa-symbol", row.symbol));
+  line.append(tag("tag", CLASS_LABELS[row.assetClass]));
+  title.append(line);
+  title.append(el("p", "rwa-name", row.name));
+  title.append(el("p", "rwa-issuer", row.issuer));
+  head.append(title);
+
+  const commit = el("button", "act is-primary") as HTMLButtonElement;
+  commit.type = "button";
+  commit.append(icon("seal", 13), el("span", undefined, "Commit a call"));
+  commit.addEventListener("click", () => commitRwaCall(row));
+  head.append(commit);
+  body.append(head);
+
+  /* the read ------------------------------------------------------------- */
+  if (row.error) {
+    const notice = el("div", "notice is-bad");
+    notice.prepend(icon("alert", 15));
+    notice.append(el("p", undefined, row.error));
+    body.append(notice);
+  } else {
+    const stats = el("div", "rwa-stats");
+    stats.append(rwaStat("Supply", formatUnits(row.supply ?? 0), `${row.symbol} tokens`));
+    stats.append(
+      row.value === null
+        ? rwaStat("Value", "—", "not read on chain")
+        : rwaStat("Value", formatUsd(row.value), valueBasis(row)),
+    );
+    stats.append(rwaStat("Decimals", String(row.decimals ?? "—"), "as the contract reports"));
+    body.append(stats);
+
+    if (row.value === null) {
+      body.append(
+        el(
+          "p",
+          "rwa-caveat",
+          "This fund's NAV is published off chain, so no dollar figure is shown. The supply " +
+            "above is real; a valuation would be borrowed from somewhere this console cannot check.",
+        ),
+      );
+    }
+  }
+
+  body.append(el("p", "rwa-note", row.note));
+
+  /* contract ------------------------------------------------------------- */
+  const contract = el("div", "rwa-contract");
+  contract.append(el("span", "rwa-contract-label", "Contract"));
+  contract.append(el("code", "mono", row.address));
+
+  const copy = el("button", "chip-copy") as HTMLButtonElement;
+  copy.type = "button";
+  copy.title = "Copy the address";
+  copy.append(icon("copy", 13));
+  copy.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(row.address).catch(() => undefined);
+    copy.replaceChildren(icon("check", 13));
+    window.setTimeout(() => copy.replaceChildren(icon("copy", 13)), 1500);
+  });
+  contract.append(copy);
+
+  const explorer = el("button", "chip-copy") as HTMLButtonElement;
+  explorer.type = "button";
+  explorer.title = "Open on Etherscan";
+  explorer.append(icon("external", 13));
+  explorer.addEventListener("click", () => {
+    window.open(`https://etherscan.io/address/${row.address}`, "_blank");
+  });
+  contract.append(explorer);
+  body.append(contract);
+
+  /* provenance ----------------------------------------------------------- */
+  const provenance = el("div", "rwa-provenance");
+  provenance.append(icon("chain", 13));
+  const read = new Date(rwaState.readAt);
+  provenance.append(
+    el(
+      "span",
+      undefined,
+      `Read from ${rwaState.chain} at block ${rwaState.block.toLocaleString("en-US")} · ` +
+        `${read.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} via ${rwaState.source}`,
+    ),
+  );
+  body.append(provenance);
+
+  if (row.denomination === "ounce" && rwaState.gold) {
+    body.append(
+      el(
+        "p",
+        "rwa-oracle",
+        `Priced at $${formatPrice(rwaState.gold.usdPerOunce)} per troy ounce, from the Chainlink ` +
+          `XAU/USD feed updated ${new Date(rwaState.gold.updatedAt).toLocaleString("en-US")}.`,
+      ),
+    );
+  }
+
+  body.append(rwaCommitments(row));
+  view.replaceChildren(body);
+}
+
+/**
+ * What MERIT already holds on this instrument. An RWA panel that showed only
+ * the market would be a data screen; the reason it is in this console is that a
+ * call on one of these can be sealed before it is acted on.
+ */
+function rwaCommitments(row: RwaReading): HTMLElement {
+  const section = el("section", "rwa-commitments");
+  section.append(el("h3", undefined, "Committed on MERIT"));
+
+  if (rwaDecisionsError) {
+    section.append(el("p", "rwa-empty", rwaDecisionsError));
+    return section;
+  }
+  if (rwaDecisions === null) {
+    section.append(el("p", "rwa-empty", "Reading the deployment…"));
+    return section;
+  }
+
+  const matches = rwaDecisions.filter(
+    (decision) => decision.asset.toLowerCase() === row.symbol.toLowerCase(),
+  );
+
+  if (matches.length === 0) {
+    section.append(
+      el(
+        "p",
+        "rwa-empty",
+        `No decision has been committed on ${row.symbol} yet. Commit a call to put one on the record.`,
+      ),
+    );
+    return section;
+  }
+
+  const table = el("table");
+  headerRow(table, ["Action", "Price", "Quantity", "Status", "Committed"]);
+  const tbody = el("tbody");
+
+  for (const decision of matches) {
+    const line = el("tr");
+    line.append(el("td", undefined, decision.action));
+    line.append(el("td", "num", decision.price));
+    line.append(el("td", "num", decision.quantity));
+    line.append(cell(tag("tag", decision.status.toLowerCase())));
+    line.append(
+      el("td", undefined, new Date(decision.committedAt).toLocaleDateString("en-US")),
+    );
+    tbody.append(line);
+  }
+
+  table.append(tbody);
+  section.append(table);
+  return section;
+}
+
+/**
+ * Hand the instrument to the chat agent rather than growing a second commit
+ * form. The approval gate, the tool call and the receipt are all already there;
+ * what this adds is the on-chain reading the operator is looking at, so the
+ * conversation starts from the same figures the panel does.
+ */
+function commitRwaCall(row: RwaReading): void {
+  const facts = [
+    `${row.symbol} — ${row.name}, issued by ${row.issuer}.`,
+    row.supply === null ? null : `Supply ${formatUnits(row.supply)} tokens.`,
+    row.value === null
+      ? "No dollar value is readable on chain for it."
+      : `Value ${formatUsd(row.value)} (${valueBasis(row)}).`,
+    rwaState ? `Read at ${rwaState.chain} block ${rwaState.block}.` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  askInChat(
+    `I am looking at a real-world asset in the RWA panel. ${facts}\n\n` +
+      "Think the call through with me, and when it is worth recording, seal it as a commitment " +
+      "before I act on it.",
+  );
+}
+
+/* -------------------------------------------------------------- settings -- */
 
 /** Identity the window is currently running under. */
 let currentSession: Session | null = null;
@@ -1884,129 +2281,41 @@ function profilePanel(status: VaultStatus): HTMLElement {
   return field;
 }
 
-/**
- * Which service answers the chat panel. Anthropic is called through its own SDK
- * with a pinned model; OpenRouter is a gateway, so it needs both a key and a
- * choice of model — the picker only lists models that can call tools, because
- * an agent that cannot call commit_decision cannot do this job.
- */
-function agentPanel(status: VaultStatus): HTMLElement {
-  const field = el("section", "field");
-  field.append(el("label", undefined, "Chat agent"));
-  field.append(
-    el(
-      "p",
-      "hint",
-      "The model behind the Chat panel. It proposes; you approve; MERIT records — " +
-        "whichever provider runs it.",
-    ),
-  );
+/** The copy mounted in Settings, replaced whenever that panel is rebuilt. */
+let settingsConfig: ModelConfig | null = null;
+/** Its summary line, repainted in place when the choice changes beneath it. */
+let settingsSummary: HTMLElement | null = null;
 
-  const choice = el("div", "provider-choice");
-  const providers: Array<[AgentConfig["provider"], string, string]> = [
-    ["anthropic", "Anthropic", "claude-opus-5, direct"],
-    ["openrouter", "OpenRouter", "any tool-capable model"],
-  ];
-
-  providers.forEach(([value, title, note]) => {
-    const option = el(
-      "button",
-      `provider ${status.agent.provider === value ? "is-active" : ""}`,
-    ) as HTMLButtonElement;
-    option.type = "button";
-    option.append(el("b", undefined, title), el("span", undefined, note));
-
-    const key = value === "anthropic" ? status.anthropicApiKey : status.openrouterApiKey;
-    option.append(el("i", `provider-dot ${key ? "is-set" : ""}`));
-
-    option.addEventListener("click", async () => {
-      await api.agent.config({ provider: value });
-      void loadSettings();
-    });
-    choice.append(option);
-  });
-  field.append(choice);
-
-  field.append(
-    status.agent.provider === "openrouter"
-      ? credentialField({
-          label: "OpenRouter API key",
-          hint: "From openrouter.ai/keys. Held in this machine's keyring; requests are made by the app, never by this window.",
-          name: "openrouterApiKey",
-          present: status.openrouterApiKey,
-          placeholder: "sk-or-v1-…",
-        })
-      : credentialField({
-          label: "Anthropic API key",
-          hint: "From console.anthropic.com. Held in this machine's keyring; requests are made by the app, never by this window.",
-          name: "anthropicApiKey",
-          present: status.anthropicApiKey,
-          placeholder: "sk-ant-…",
-        }),
-  );
-
-  if (status.agent.provider === "openrouter") field.append(modelPicker(status));
-  return field;
+function summariseAgent(status: VaultStatus | null): string {
+  if (!status) return "The model behind the Chat panel.";
+  return chatReady(status)
+    ? `Chat runs on ${describeChoice(status)} via ${PROVIDERS[status.agent.provider].title}. ` +
+        "It proposes; you approve; MERIT records."
+    : "The model behind the Chat panel. Add a key below — it proposes; you approve; " +
+        "MERIT records — whichever provider runs it.";
 }
 
-function modelPicker(status: VaultStatus): HTMLElement {
-  const wrap = el("div", "model-field");
-  const label = el("label", undefined, "Model");
-  label.setAttribute("for", "openrouter-model");
-  wrap.append(label);
+/**
+ * Which service answers the chat panel, and on what model — the same controls
+ * the Chat panel puts behind its model chip, mounted here as well. Settings is
+ * where someone goes looking for a key; Chat is where they find out they need
+ * one. Both get the whole thing rather than a pointer at the other.
+ */
+function agentPanel(status: VaultStatus): HTMLElement {
+  const field = el("section", "field is-wide");
+  field.append(el("label", undefined, "Chat agent"));
 
-  const row = el("div", "field-row");
-  const select = el("select") as HTMLSelectElement;
-  select.id = "openrouter-model";
-  select.disabled = true;
-  select.append(new Option("Loading the catalogue…", ""));
-  row.append(select);
-  wrap.append(row);
+  settingsSummary = el("p", "hint", summariseAgent(status));
+  field.append(settingsSummary);
 
-  const note = el("p", "hint model-note", "");
-  wrap.append(note);
+  // A rebuilt panel must not leave the old copy in the repaint set.
+  if (settingsConfig) configs.delete(settingsConfig);
+  settingsConfig = createModelConfig("settings");
+  configs.add(settingsConfig);
+  settingsConfig.paint();
 
-  void (async () => {
-    const result = await api.agent.models();
-    select.replaceChildren();
-
-    if (!result.ok) {
-      select.append(new Option("Could not reach OpenRouter", ""));
-      note.textContent = result.error;
-      return;
-    }
-
-    select.disabled = false;
-    select.append(new Option("Choose a model…", ""));
-
-    const describe = (model: OpenRouterModel) => {
-      const context = model.contextLength ? `${Math.round(model.contextLength / 1000)}K ctx` : null;
-      // Prices come per token; per million is the unit everyone quotes.
-      const price =
-        model.promptPrice !== null && model.completionPrice !== null
-          ? `$${(model.promptPrice * 1e6).toFixed(2)}/$${(model.completionPrice * 1e6).toFixed(2)} per M`
-          : null;
-      return [context, price].filter(Boolean).join(" · ");
-    };
-
-    for (const model of result.data) {
-      const option = new Option(`${model.name} — ${describe(model)}`, model.id);
-      option.selected = model.id === status.agent.openrouterModel;
-      select.append(option);
-    }
-
-    note.textContent = `${result.data.length} tool-capable models. Models without tool support are hidden — the agent needs them to seal a commitment.`;
-
-    select.addEventListener("change", async () => {
-      await api.agent.config({ openrouterModel: select.value });
-      const chosen = result.data.find((model) => model.id === select.value);
-      note.textContent = chosen
-        ? `Saved. Chat now runs on ${chosen.name}.`
-        : "No model chosen — Chat will refuse until one is picked.";
-    });
-  })();
-
-  return wrap;
+  field.append(settingsConfig.root);
+  return field;
 }
 
 async function loadSettings(): Promise<void> {
@@ -2014,6 +2323,7 @@ async function loadSettings(): Promise<void> {
   const result = await api.vault.status();
   if (!result.ok) return fail(body, result.error);
   const status = result.data;
+  applyAgentState(status);
 
   body.replaceChildren();
 
@@ -2033,7 +2343,527 @@ async function loadSettings(): Promise<void> {
 
   body.append(profilePanel(status));
   body.append(agentPanel(status));
+
+  if (status.agent.provider === "openrouter" && !catalogue && !catalogueLoading) {
+    void loadCatalogue();
+  }
 }
+
+/* ------------------------------------------------------------ chat model -- */
+
+/**
+ * What each provider needs from the operator. Anthropic is called through its
+ * own SDK on a pinned model, so a key is the whole of its configuration;
+ * OpenRouter is a gateway, so it needs a key *and* a choice of model.
+ */
+const PROVIDERS = {
+  anthropic: {
+    title: "Anthropic",
+    note: "claude-opus-5 · direct",
+    keyName: "anthropicApiKey",
+    label: "Anthropic API key",
+    placeholder: "sk-ant-…",
+    source: "console.anthropic.com",
+  },
+  openrouter: {
+    title: "OpenRouter",
+    note: "any tool-capable model",
+    keyName: "openrouterApiKey",
+    label: "OpenRouter API key",
+    placeholder: "sk-or-v1-…",
+    source: "openrouter.ai/keys",
+  },
+} as const satisfies Record<
+  AgentConfig["provider"],
+  { title: string; note: string; keyName: keyof VaultStatus; label: string; placeholder: string; source: string }
+>;
+
+const PROVIDER_NAMES = Object.keys(PROVIDERS) as Array<AgentConfig["provider"]>;
+
+const modelSheet = $("#model-sheet");
+const modelScrim = $("#model-scrim");
+const modelChip = $<HTMLButtonElement>("#model-chip");
+const composerModel = $<HTMLButtonElement>("#composer-model");
+
+/**
+ * The last vault status read. Never a key — only which provider is live, which
+ * model is chosen, and whether a credential exists for it.
+ */
+let agentState: VaultStatus | null = null;
+
+/** The catalogue is a few hundred rows and does not change mid-session. */
+let catalogue: OpenRouterModel[] | null = null;
+let catalogueError: string | null = null;
+let catalogueLoading = false;
+
+/** Enough configuration to send a message: a key, and on OpenRouter a model. */
+function chatReady(status: VaultStatus | null): boolean {
+  if (!status) return false;
+  const provider = PROVIDERS[status.agent.provider];
+  if (!status[provider.keyName]) return false;
+  return status.agent.provider !== "openrouter" || Boolean(status.agent.openrouterModel);
+}
+
+/** The model as a person would say it: a name where we have one, else the id. */
+function describeChoice(status: VaultStatus | null): string {
+  if (!status) return "Loading…";
+  if (status.agent.provider === "anthropic") return "claude-opus-5";
+
+  const chosen = status.agent.openrouterModel;
+  if (!chosen) return "No model chosen";
+  return catalogue?.find((model) => model.id === chosen)?.name ?? chosen;
+}
+
+/** Context window and price, in the units the providers themselves quote. */
+function describeModel(model: OpenRouterModel): string {
+  const context = model.contextLength ? `${Math.round(model.contextLength / 1000)}K ctx` : null;
+  // Prices arrive per token; per million is what everyone reads and compares.
+  const price =
+    model.promptPrice !== null && model.completionPrice !== null
+      ? model.promptPrice === 0 && model.completionPrice === 0
+        ? "free"
+        : `$${(model.promptPrice * 1e6).toFixed(2)} / $${(model.completionPrice * 1e6).toFixed(2)} per M`
+      : null;
+  return [context, price].filter(Boolean).join(" · ");
+}
+
+/* ------------------------------------------------------- the control set -- */
+
+/**
+ * Provider, key and model — the whole configuration, built as a component
+ * because it is wanted in two places at once: over the Chat panel, where an
+ * operator discovers they need it, and in Settings, where they go looking for
+ * it. One implementation, mounted twice, so the two cannot drift apart.
+ */
+interface ModelConfig {
+  root: HTMLElement;
+  paint(): void;
+  focusKey(): void;
+  focusSearch(): void;
+}
+
+/** Every mounted instance, so a change made in one repaints the others. */
+const configs = new Set<ModelConfig>();
+
+/** Labels need a `for`, and two mounted copies cannot share an id. */
+let configSeq = 0;
+
+function createModelConfig(where: "sheet" | "settings"): ModelConfig {
+  const uid = `model-${(configSeq += 1)}`;
+  const root = el("div", `model-config ${where === "settings" ? "is-inline" : ""}`);
+
+  /* provider ------------------------------------------------------------- */
+  const seg = el("div", "seg");
+  const options = new Map<AgentConfig["provider"], { button: HTMLButtonElement; dot: HTMLElement }>();
+
+  for (const value of PROVIDER_NAMES) {
+    const meta = PROVIDERS[value];
+    const button = el("button") as HTMLButtonElement;
+    button.type = "button";
+    const dot = el("i", "seg-dot");
+    button.append(el("b", undefined, meta.title), el("span", undefined, meta.note), dot);
+    button.addEventListener("click", () => void chooseProvider(value));
+    options.set(value, { button, dot });
+    seg.append(button);
+  }
+  root.append(seg);
+
+  /* key ------------------------------------------------------------------ */
+  const field = el("div", "key-field");
+  const label = el("label");
+  label.setAttribute("for", `${uid}-key`);
+  field.append(label);
+
+  const row = el("div", "key-row");
+  const holder = el("div", "key-input");
+  const input = el("input") as HTMLInputElement;
+  input.id = `${uid}-key`;
+  input.type = "password";
+  input.spellcheck = false;
+  input.autocomplete = "off";
+  holder.append(input);
+
+  const eye = el("button", "gate-eye") as HTMLButtonElement;
+  eye.type = "button";
+  eye.setAttribute("aria-label", "Show the key");
+  eye.append(icon("reveal", 14));
+  eye.addEventListener("click", () => {
+    const shown = input.type === "text";
+    input.type = shown ? "password" : "text";
+    eye.setAttribute("aria-label", shown ? "Show the key" : "Hide the key");
+    eye.replaceChildren(icon(shown ? "reveal" : "conceal", 14));
+    input.focus();
+  });
+  holder.append(eye);
+  row.append(holder);
+
+  const save = el("button", "act is-primary", "Save") as HTMLButtonElement;
+  save.type = "button";
+  save.addEventListener("click", () => void saveKey());
+  row.append(save);
+
+  const clear = el("button", "act", "Remove") as HTMLButtonElement;
+  clear.type = "button";
+  clear.hidden = true;
+  clear.addEventListener("click", () => void clearKey());
+  row.append(clear);
+
+  field.append(row);
+
+  const keyHint = el("p", "hint");
+  field.append(keyHint);
+  root.append(field);
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    void saveKey();
+  });
+
+  /* model ---------------------------------------------------------------- */
+  const picker = el("div", "model-picker");
+
+  const searchWrap = el("div", "model-search");
+  searchWrap.append(icon("search", 13));
+  const search = el("input") as HTMLInputElement;
+  search.type = "search";
+  search.placeholder = "Search models…";
+  search.setAttribute("aria-label", "Search models");
+  search.addEventListener("input", () => renderList());
+  searchWrap.append(search);
+  picker.append(searchWrap);
+
+  const list = el("div", "model-list");
+  picker.append(list);
+
+  const note = el("p", "hint");
+  picker.append(note);
+  root.append(picker);
+
+  /* behaviour ------------------------------------------------------------ */
+
+  async function saveKey(): Promise<void> {
+    const value = input.value.trim();
+    if (!value || !agentState) return;
+
+    const provider = PROVIDERS[agentState.agent.provider];
+    save.disabled = true;
+    const result = await api.vault.setSecret(provider.keyName, value);
+    save.disabled = false;
+
+    if (!result.ok) {
+      keyHint.className = "hint is-bad";
+      keyHint.replaceChildren(icon("alert", 13), el("span", undefined, result.error));
+      return;
+    }
+
+    input.value = "";
+    applyAgentState(result.data);
+
+    // On OpenRouter the key is half the job; send them straight at the rest.
+    const needsModel =
+      result.data.agent.provider === "openrouter" && !result.data.agent.openrouterModel;
+    if (needsModel) {
+      if (!catalogue && !catalogueLoading) void loadCatalogue();
+      search.focus();
+      return;
+    }
+
+    if (where === "sheet") {
+      closeModelSheet();
+      flashChip(`${provider.title} key saved.`);
+    } else {
+      keyHint.className = "hint is-ok";
+      keyHint.replaceChildren(icon("check", 13), el("span", undefined, `${provider.title} key saved.`));
+    }
+  }
+
+  async function clearKey(): Promise<void> {
+    if (!agentState) return;
+    const result = await api.vault.clearSecret(PROVIDERS[agentState.agent.provider].keyName);
+    if (!result.ok) return window.alert(result.error);
+    input.value = "";
+    applyAgentState(result.data);
+  }
+
+  /**
+   * The catalogue, filtered. Only tool-capable models are in it at all — an
+   * agent that cannot call commit_decision cannot do this job — and the one
+   * already chosen is pinned to the top so the current state is never
+   * off-screen.
+   */
+  function renderList(): void {
+    if (catalogueLoading) {
+      const loading = el("div", "model-empty is-loading");
+      loading.append(icon("spinner", 14), el("span", undefined, "Loading the catalogue…"));
+      list.replaceChildren(loading);
+      note.textContent = "";
+      return;
+    }
+
+    if (catalogueError) {
+      const failed = el("div", "model-empty is-bad");
+      failed.append(icon("alert", 14), el("span", undefined, catalogueError));
+      const retry = el("button", "ghost", "Try again") as HTMLButtonElement;
+      retry.type = "button";
+      retry.addEventListener("click", () => void loadCatalogue());
+      failed.append(retry);
+      list.replaceChildren(failed);
+      note.textContent = "";
+      return;
+    }
+
+    const chosen = agentState?.agent.openrouterModel ?? "";
+    const terms = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const matches = (model: OpenRouterModel) => {
+      const haystack = `${model.name} ${model.id}`.toLowerCase();
+      return terms.every((term) => haystack.includes(term));
+    };
+
+    const all = catalogue ?? [];
+    const found = all.filter(matches);
+    const pinned = found.filter((model) => model.id === chosen);
+    const rest = found.filter((model) => model.id !== chosen);
+    // A few hundred rows render fine, but this is a picker, not a directory:
+    // past a screenful the answer is to type, not to scroll.
+    const shown = [...pinned, ...rest].slice(0, 60);
+
+    if (shown.length === 0) {
+      const empty = el("div", "model-empty");
+      empty.append(
+        icon("search", 14),
+        el(
+          "span",
+          undefined,
+          all.length ? `Nothing matches “${search.value.trim()}”.` : "No models available.",
+        ),
+      );
+      list.replaceChildren(empty);
+      note.textContent = "";
+      return;
+    }
+
+    list.replaceChildren(
+      ...shown.map((model) => {
+        const entry = el(
+          "button",
+          `model-row ${model.id === chosen ? "is-active" : ""}`,
+        ) as HTMLButtonElement;
+        entry.type = "button";
+
+        const main = el("div", "model-row-main");
+        main.append(el("b", undefined, model.name));
+        main.append(el("span", "model-row-id mono", model.id));
+        entry.append(main);
+
+        entry.append(el("span", "model-row-meta", describeModel(model)));
+        entry.append(icon("check", 14));
+
+        entry.addEventListener("click", () => void pick(model));
+        return entry;
+      }),
+    );
+
+    const hidden = found.length - shown.length;
+    note.textContent =
+      hidden > 0
+        ? `${found.length} of ${all.length} tool-capable models match — ${hidden} more, keep typing to narrow it.`
+        : `${found.length} of ${all.length} tool-capable models. Models without tool support are hidden: the agent needs them to seal a commitment.`;
+  }
+
+  async function pick(model: OpenRouterModel): Promise<void> {
+    const result = await api.agent.config({ openrouterModel: model.id });
+    if (!result.ok) {
+      note.textContent = result.error;
+      return;
+    }
+
+    await refreshAgentState();
+
+    if (where === "sheet") {
+      closeModelSheet();
+      flashChip(`Chat now runs on ${model.name}.`);
+    } else {
+      note.textContent = `Saved. Chat now runs on ${model.name}.`;
+    }
+  }
+
+  function paint(): void {
+    if (!agentState) return;
+    const active = agentState.agent.provider;
+    const provider = PROVIDERS[active];
+    const held = agentState[provider.keyName] as boolean;
+
+    options.forEach(({ button, dot }, value) => {
+      button.classList.toggle("is-active", value === active);
+      dot.classList.toggle("is-set", agentState![PROVIDERS[value].keyName] as boolean);
+    });
+
+    label.textContent = provider.label;
+    input.placeholder = held ? "•••••••• stored on this machine" : provider.placeholder;
+    save.textContent = held ? "Replace" : "Save";
+    clear.hidden = !held;
+
+    keyHint.className = `hint ${held ? "is-ok" : ""}`;
+    keyHint.replaceChildren(
+      el(
+        "span",
+        undefined,
+        held
+          ? "Held in this machine's keyring. Requests are made by the app, never by this window."
+          : `From ${provider.source}. It is encrypted by the OS keyring and never reaches this window.`,
+      ),
+    );
+
+    picker.hidden = active !== "openrouter";
+    if (active === "openrouter") {
+      if (!catalogue && !catalogueLoading) void loadCatalogue();
+      renderList();
+    }
+  }
+
+  return {
+    root,
+    paint,
+    focusKey: () => input.focus(),
+    focusSearch: () => search.focus(),
+  };
+}
+
+/** Repaint every mounted copy, plus the two places that summarise them. */
+function repaintModelConfigs(): void {
+  paintModelChip();
+  if (settingsSummary) settingsSummary.textContent = summariseAgent(agentState);
+  configs.forEach((config) => config.paint());
+}
+
+async function chooseProvider(value: AgentConfig["provider"]): Promise<void> {
+  if (value === agentState?.agent.provider) return;
+
+  const result = await api.agent.config({ provider: value });
+  if (!result.ok) return window.alert(result.error);
+  await refreshAgentState();
+}
+
+/* --------------------------------------------------------------- summary -- */
+
+/** The header chip and the composer's footer say the same thing, in two sizes. */
+function paintModelChip(): void {
+  const ready = chatReady(agentState);
+  const provider = agentState ? PROVIDERS[agentState.agent.provider] : null;
+  const choice = describeChoice(agentState);
+
+  modelChip.replaceChildren(
+    icon("model", 14),
+    el("span", "model-chip-provider", provider?.title ?? "Model"),
+    el("span", "model-chip-name", ready ? choice : "Not connected"),
+    icon("chevron", 13),
+  );
+  modelChip.classList.toggle("is-unset", !ready);
+  modelChip.title = ready
+    ? `${provider?.title} · ${choice}`
+    : "No model connected — click to add a key and choose one";
+
+  composerModel.replaceChildren(
+    el("i", `composer-dot ${ready ? "is-ok" : ""}`),
+    el("span", undefined, ready ? choice : "Connect a model"),
+  );
+  composerModel.classList.toggle("is-unset", !ready);
+}
+
+/** Re-read what the main process holds, then repaint everything that shows it. */
+async function refreshAgentState(): Promise<void> {
+  const result = await api.vault.status();
+  if (result.ok) applyAgentState(result.data);
+}
+
+function applyAgentState(status: VaultStatus): void {
+  const wasReady = chatReady(agentState);
+  agentState = status;
+  repaintModelConfigs();
+  syncSendState();
+
+  // The empty state carries the setup prompt, so it has to be rebuilt the
+  // moment a key turns a "connect a model" card into three suggestions.
+  if (wasReady !== chatReady(status) && $("#welcome")) resetTranscript();
+}
+
+async function loadCatalogue(): Promise<void> {
+  catalogueLoading = true;
+  catalogueError = null;
+  configs.forEach((config) => config.paint());
+
+  const result = await api.agent.models();
+  catalogueLoading = false;
+  if (result.ok) {
+    catalogue = result.data;
+  } else {
+    catalogueError = result.error;
+  }
+
+  // A name for the chosen id only becomes available once the list has landed.
+  repaintModelConfigs();
+}
+
+/**
+ * Arriving at a panel that shows the model. The catalogue is what turns a
+ * stored id like `anthropic/claude-opus-5` into the name it was picked by, so
+ * it is fetched on the way in rather than the first time a list is opened.
+ */
+async function enterModelPanel(): Promise<void> {
+  await refreshAgentState();
+  if (agentState?.agent.provider === "openrouter" && !catalogue && !catalogueLoading) {
+    await loadCatalogue();
+  }
+}
+
+/* ---------------------------------------------------------- the model sheet */
+
+/** The copy mounted over the Chat panel, built once and kept. */
+const sheetConfig = createModelConfig("sheet");
+$("#model-sheet-mount").append(sheetConfig.root);
+configs.add(sheetConfig);
+
+function openModelSheet(): void {
+  modelSheet.hidden = false;
+  modelChip.setAttribute("aria-expanded", "true");
+  sheetConfig.paint();
+  window.addEventListener("keydown", onSheetKey);
+
+  // Whichever field is the thing still missing.
+  const provider = agentState ? PROVIDERS[agentState.agent.provider] : null;
+  const needsKey = !provider || !agentState?.[provider.keyName];
+  window.setTimeout(() => (needsKey ? sheetConfig.focusKey() : sheetConfig.focusSearch()), 0);
+}
+
+function closeModelSheet(): void {
+  modelSheet.hidden = true;
+  modelChip.setAttribute("aria-expanded", "false");
+  window.removeEventListener("keydown", onSheetKey);
+}
+
+function onSheetKey(event: KeyboardEvent): void {
+  if (event.key === "Escape") closeModelSheet();
+}
+
+/** A brief line under the header, so a change in the sheet is visibly applied. */
+let flashTimer: number | undefined;
+function flashChip(text: string): void {
+  const bar = $(".chat-bar");
+  bar.querySelector(".chat-flash")?.remove();
+
+  const flash = el("p", "chat-flash");
+  flash.append(icon("check", 12), el("span", undefined, text));
+  bar.append(flash);
+
+  window.clearTimeout(flashTimer);
+  flashTimer = window.setTimeout(() => flash.remove(), 3200);
+}
+
+modelChip.addEventListener("click", () => (modelSheet.hidden ? openModelSheet() : closeModelSheet()));
+composerModel.addEventListener("click", () => openModelSheet());
+modelScrim.addEventListener("click", () => closeModelSheet());
+$("#model-close").addEventListener("click", () => closeModelSheet());
 
 /* ------------------------------------------------------------------ chat -- */
 
@@ -2043,15 +2873,31 @@ const composer = $<HTMLFormElement>("#composer");
 const promptField = $<HTMLTextAreaElement>("#prompt");
 const sendButton = $<HTMLButtonElement>("#send");
 const newChatButton = $<HTMLButtonElement>("#new-chat");
+const scrollEnd = $<HTMLButtonElement>("#scroll-end");
 
 /** The agent turn currently receiving tokens, so the caret lands on it alone. */
 let streamingTurn: HTMLElement | null = null;
 let streamingBody: HTMLElement | null = null;
+/** Raw markdown as it arrives; rendered once the turn is complete. */
+let streamingText = "";
+/** A request is in flight, so the composer is held. */
+let chatBusy = false;
+
+/** The prose behind each agent turn, for its copy button. */
+const rawTurnText = new WeakMap<HTMLElement, string>();
 
 function endStreaming(): void {
-  streamingTurn?.classList.remove("is-streaming");
+  if (streamingTurn && streamingBody) {
+    // Markdown is rendered once, at the end: re-parsing on every token would
+    // rebuild the whole turn a few hundred times.
+    streamingBody.replaceChildren(renderProse(streamingText));
+    rawTurnText.set(streamingTurn, streamingText);
+    streamingTurn.classList.remove("is-streaming");
+  }
   streamingTurn = null;
   streamingBody = null;
+  streamingText = "";
+  removeThinking();
 }
 
 function atBottom(): boolean {
@@ -2065,6 +2911,156 @@ function atBottom(): boolean {
  */
 function follow(wasAtBottom: boolean): void {
   if (wasAtBottom) transcript.scrollTop = transcript.scrollHeight;
+  // Appending while the reader is scrolled up produces no scroll event, so the
+  // jump-to-latest button has to be re-evaluated here as well.
+  syncScrollEnd();
+}
+
+function syncScrollEnd(): void {
+  scrollEnd.hidden = atBottom() || transcript.childElementCount === 0;
+}
+
+transcript.addEventListener("scroll", () => syncScrollEnd());
+
+scrollEnd.addEventListener("click", () => {
+  transcript.scrollTo({ top: transcript.scrollHeight, behavior: "smooth" });
+});
+
+/* ------------------------------------------------------------- markdown -- */
+
+/**
+ * Models write markdown whether or not anyone asked them to, and a wall of
+ * asterisks reads worse than no formatting at all. This is a deliberately small
+ * subset — headings, lists, quotes, code, bold, italic — built with DOM calls
+ * rather than parsed as markup, so nothing the model emits can become an
+ * element this window did not decide to create.
+ */
+function inlineProse(text: string, into: HTMLElement): void {
+  // Code first: whatever is inside backticks is literal, emphasis included.
+  const pattern = /`([^`]+)`|\*\*([^*]+)\*\*|__([^_]+)__|(?<![*\w])\*([^*\n]+)\*(?!\w)/g;
+  let cursor = 0;
+
+  for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
+    if (match.index > cursor) into.append(text.slice(cursor, match.index));
+
+    const [, code, bold, boldAlt, italic] = match;
+    if (code !== undefined) into.append(el("code", undefined, code));
+    else if (bold !== undefined || boldAlt !== undefined) into.append(el("strong", undefined, bold ?? boldAlt));
+    else if (italic !== undefined) into.append(el("em", undefined, italic));
+
+    cursor = match.index + match[0].length;
+  }
+
+  if (cursor < text.length) into.append(text.slice(cursor));
+}
+
+function renderProse(source: string): DocumentFragment {
+  const out = document.createDocumentFragment();
+  const lines = source.split("\n");
+
+  let paragraph: string[] = [];
+  let list: HTMLElement | null = null;
+
+  const flushParagraph = () => {
+    if (paragraph.length === 0) return;
+    const node = el("p");
+    inlineProse(paragraph.join(" "), node);
+    out.append(node);
+    paragraph = [];
+  };
+  const flushList = () => {
+    list = null;
+  };
+  const flushAll = () => {
+    flushParagraph();
+    flushList();
+  };
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+
+    // Fenced code: everything up to the closing fence is taken literally.
+    const fence = /^\s*```(\w*)\s*$/.exec(line);
+    if (fence) {
+      flushAll();
+      const body: string[] = [];
+      i += 1;
+      while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) {
+        body.push(lines[i]);
+        i += 1;
+      }
+      const pre = el("pre", "prose-code");
+      pre.append(el("code", undefined, body.join("\n")));
+      out.append(pre);
+      continue;
+    }
+
+    if (line.trim() === "") {
+      flushAll();
+      continue;
+    }
+
+    const heading = /^(#{1,4})\s+(.*)$/.exec(line);
+    if (heading) {
+      flushAll();
+      const node = el(`h${Math.min(heading[1].length + 2, 6)}`, "prose-head");
+      inlineProse(heading[2], node);
+      out.append(node);
+      continue;
+    }
+
+    if (/^\s*([-*_])\s*\1\s*\1[-*_\s]*$/.test(line)) {
+      flushAll();
+      out.append(el("hr", "prose-rule"));
+      continue;
+    }
+
+    const quote = /^\s*>\s?(.*)$/.exec(line);
+    if (quote) {
+      flushAll();
+      const node = el("blockquote", "prose-quote");
+      inlineProse(quote[1], node);
+      out.append(node);
+      continue;
+    }
+
+    const bullet = /^\s*[-*•]\s+(.*)$/.exec(line);
+    const numbered = /^\s*(\d+)[.)]\s+(.*)$/.exec(line);
+    if (bullet || numbered) {
+      flushParagraph();
+      const wanted = bullet ? "ul" : "ol";
+      if (!list || list.tagName.toLowerCase() !== wanted) {
+        list = el(wanted, "prose-list");
+        out.append(list);
+      }
+      const item = el("li");
+      inlineProse((bullet ? bullet[1] : numbered![2]), item);
+      list.append(item);
+      continue;
+    }
+
+    flushList();
+    paragraph.push(line.trim());
+  }
+
+  flushAll();
+  return out;
+}
+
+/* ---------------------------------------------------------------- turns -- */
+
+function copyButton(source: () => string): HTMLButtonElement {
+  const button = el("button", "turn-copy") as HTMLButtonElement;
+  button.type = "button";
+  button.title = "Copy this reply";
+  button.setAttribute("aria-label", "Copy this reply");
+  button.append(icon("copy", 13));
+  button.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(source()).catch(() => undefined);
+    button.replaceChildren(icon("check", 13));
+    window.setTimeout(() => button.replaceChildren(icon("copy", 13)), 1500);
+  });
+  return button;
 }
 
 function turn(cls: string, text = ""): { node: HTMLElement; body: HTMLElement } {
@@ -2085,28 +3081,67 @@ function turn(cls: string, text = ""): { node: HTMLElement; body: HTMLElement } 
   if (cls === "is-tool") body.prepend(icon("tool", 12));
   if (cls === "is-error") body.prepend(icon("alert", 14));
   node.append(body);
+
+  if (cls === "is-agent") node.append(copyButton(() => rawTurnText.get(node) ?? body.textContent ?? ""));
+  if (cls === "is-user") {
+    rawTurnText.set(node, text);
+    node.append(copyButton(() => text));
+  }
+
   transcript.append(node);
   follow(wasAtBottom);
 
   return { node, body };
 }
 
+/**
+ * Something is happening, but no token has arrived yet. Without this the window
+ * looks inert for however long the first round of tool calls takes.
+ */
+function showThinking(): void {
+  if ($("#thinking")) return;
+  const node = el("div", "turn is-agent is-thinking");
+  node.id = "thinking";
+  const glyph = el("div", "turn-mark");
+  glyph.append(icon("mark", 15));
+  node.append(glyph);
+
+  const body = el("div", "turn-body");
+  const dots = el("span", "thinking-dots");
+  dots.append(el("i"), el("i"), el("i"));
+  body.append(dots);
+  node.append(body);
+
+  const wasAtBottom = atBottom();
+  transcript.append(node);
+  follow(wasAtBottom);
+}
+
+function removeThinking(): void {
+  $("#thinking")?.remove();
+}
+
 api.chat.onText((delta) => {
+  removeThinking();
   if (!streamingBody) {
     const created = turn("is-agent");
     streamingTurn = created.node;
     streamingBody = created.body;
+    streamingText = "";
     streamingTurn.classList.add("is-streaming");
   }
 
   const wasAtBottom = atBottom();
-  streamingBody.textContent += delta;
+  streamingText += delta;
+  streamingBody.textContent = streamingText;
   follow(wasAtBottom);
 });
 
 api.chat.onTool((name) => {
   endStreaming();
-  turn("is-tool", name);
+  // Tool names are snake_case on the wire; the transcript is prose.
+  turn("is-tool", name.replace(/_/g, " "));
+  if (chatBusy) showThinking();
 });
 
 api.chat.onApproval((request) => {
@@ -2127,7 +3162,8 @@ api.chat.onApproval((request) => {
   );
 
   const actions = el("div", "approval-actions");
-  const approve = el("button", "act is-primary", "Seal commitment") as HTMLButtonElement;
+  const approve = el("button", "act is-primary") as HTMLButtonElement;
+  approve.append(icon("seal", 13), el("span", undefined, "Seal commitment"));
   const decline = el("button", "act", "Decline") as HTMLButtonElement;
 
   approve.addEventListener("click", () => void api.chat.approve(request.id, true));
@@ -2140,6 +3176,95 @@ api.chat.onApproval((request) => {
 
 api.chat.onApprovalSettled((id) => {
   approvals.querySelector(`[data-id="${id}"]`)?.remove();
+  // The turn resumes the moment the decision is taken; say so rather than
+  // leaving the window inert until the next token happens to arrive.
+  if (chatBusy) showThinking();
+});
+
+/* ------------------------------------------------------------ empty state -- */
+
+const SUGGESTIONS: Array<[string, string]> = [
+  ["Which agents are registered?", "Which agents are registered, and what are they trading?"],
+  ["What is open right now?", "What exposure is currently open and unsettled?"],
+  ["Commit an ETH call", "Walk me through committing an ETH call before I execute it."],
+];
+
+/**
+ * The opening screen doubles as the setup screen: an operator who has not
+ * connected a model is told that here, where they are about to type, rather
+ * than by a refusal after they have.
+ */
+function buildWelcome(): HTMLElement {
+  const welcome = el("div", "welcome");
+  welcome.id = "welcome";
+
+  const mark = el("div", "welcome-mark");
+  mark.append(icon("mark", 26));
+  welcome.append(mark);
+
+  welcome.append(el("h2", undefined, "Think a call through."));
+  welcome.append(
+    el(
+      "p",
+      undefined,
+      "When you want it on the record, the agent seals it as a commitment. You approve first, " +
+        "and you execute afterwards in your own wallet — the protocol never touches your funds.",
+    ),
+  );
+
+  if (!chatReady(agentState)) {
+    const setup = el("div", "setup");
+
+    const head = el("div", "setup-head");
+    head.append(icon("key", 15), el("b", undefined, "Connect a model to start"));
+    setup.append(head);
+
+    setup.append(
+      el(
+        "p",
+        undefined,
+        "Chat runs on your own key — Anthropic directly, or any tool-capable model on " +
+          "OpenRouter. The key is encrypted by this machine's keyring and is used only by " +
+          "the app itself.",
+      ),
+    );
+
+    const open = el("button", "act is-primary") as HTMLButtonElement;
+    open.type = "button";
+    open.append(el("span", undefined, "Add a key and pick a model"), icon("next", 14));
+    open.addEventListener("click", () => openModelSheet());
+    setup.append(open);
+
+    welcome.append(setup);
+    return welcome;
+  }
+
+  const suggestions = el("div", "suggestions");
+  for (const [label, fill] of SUGGESTIONS) {
+    const button = el("button") as HTMLButtonElement;
+    button.type = "button";
+    button.dataset.fill = fill;
+    button.append(el("span", undefined, label), icon("next", 13));
+    suggestions.append(button);
+  }
+  welcome.append(suggestions);
+
+  return welcome;
+}
+
+function resetTranscript(): void {
+  transcript.replaceChildren(buildWelcome());
+  scrollEnd.hidden = true;
+}
+
+// Delegated, because the welcome is rebuilt whenever the setup state changes.
+transcript.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLElement>("[data-fill]");
+  if (!button?.dataset.fill) return;
+  promptField.value = button.dataset.fill;
+  resizeComposer();
+  syncSendState();
+  promptField.focus();
 });
 
 /* --------------------------------------------------------------- composer -- */
@@ -2150,7 +3275,12 @@ function resizeComposer(): void {
 }
 
 function syncSendState(): void {
-  sendButton.disabled = promptField.value.trim().length === 0;
+  const ready = chatReady(agentState);
+  sendButton.disabled = !ready || chatBusy || promptField.value.trim().length === 0;
+  promptField.placeholder = ready
+    ? "Ask about an agent, review open exposure, or think through a call…"
+    : "Connect a model to start chatting…";
+  composer.classList.toggle("is-locked", !ready);
 }
 
 promptField.addEventListener("input", () => {
@@ -2167,27 +3297,27 @@ promptField.addEventListener("keydown", (event) => {
   composer.requestSubmit();
 });
 
-$("#suggestions")?.addEventListener("click", (event) => {
-  const button = (event.target as HTMLElement).closest<HTMLElement>("[data-fill]");
-  if (!button?.dataset.fill) return;
-  promptField.value = button.dataset.fill;
-  resizeComposer();
-  syncSendState();
-  promptField.focus();
-});
-
 composer.addEventListener("submit", async (event) => {
   event.preventDefault();
+
+  // Nothing to send it to yet: open the sheet rather than fail after the fact.
+  if (!chatReady(agentState)) return openModelSheet();
+
   const text = promptField.value.trim();
-  if (!text) return;
+  if (!text || chatBusy) return;
 
   turn("is-user", text);
   promptField.value = "";
   resizeComposer();
-  sendButton.disabled = true;
+  chatBusy = true;
+  syncSendState();
+  composer.classList.add("is-busy");
   endStreaming();
+  showThinking();
 
   const result = await api.chat.send(text);
+  chatBusy = false;
+  composer.classList.remove("is-busy");
   endStreaming();
   if (!result.ok) turn("is-error", result.error);
 
@@ -2195,23 +3325,26 @@ composer.addEventListener("submit", async (event) => {
   promptField.focus();
 });
 
+/**
+ * Put a question in the composer and hand the panel over to Chat. Other panels
+ * use this to start a conversation from what they are showing, rather than
+ * growing their own copy of the commit flow — there is one approval gate in
+ * this console and it lives here.
+ */
+function askInChat(text: string): void {
+  show("chat");
+  promptField.value = text;
+  resizeComposer();
+  syncSendState();
+  promptField.focus();
+  promptField.setSelectionRange(text.length, text.length);
+}
+
 newChatButton.addEventListener("click", async () => {
   await api.chat.reset();
   endStreaming();
   approvals.replaceChildren();
-
-  const welcome = el("div", "welcome");
-  welcome.id = "welcome";
-  welcome.append(el("h2", undefined, "Think a call through."));
-  welcome.append(
-    el(
-      "p",
-      undefined,
-      "When you want it on the record, the agent seals it as a commitment. You approve first, " +
-        "and you execute afterwards in your own wallet — the protocol never touches your funds.",
-    ),
-  );
-  transcript.replaceChildren(welcome);
+  resetTranscript();
 
   promptField.value = "";
   resizeComposer();
@@ -2219,7 +3352,10 @@ newChatButton.addEventListener("click", async () => {
   promptField.focus();
 });
 
+resetTranscript();
+paintModelChip();
 syncSendState();
+void refreshAgentState();
 
 /* ------------------------------------------------------------------ gate -- */
 
@@ -2742,6 +3878,9 @@ function enterConsole(session: Session | null, address: string | null): void {
 
   $<HTMLVideoElement>("#gate-video").pause();
   void refreshHealth();
+  // Which provider and model this machine is configured for, so the Chat panel
+  // is truthful before anyone navigates to it.
+  void refreshAgentState();
   // The dashboard rendered before sign-in, without an address to greet.
   show("dashboard");
 }
@@ -2759,7 +3898,8 @@ async function signOut(): Promise<void> {
   // The transcript was produced under the old session; it does not belong to
   // whoever signs in next.
   await api.chat.reset();
-  transcript.replaceChildren();
+  approvals.replaceChildren();
+  resetTranscript();
   currentSession = null;
   currentAddress = null;
   show("dashboard");

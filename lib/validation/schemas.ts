@@ -84,6 +84,11 @@ export const createStrategyVersionSchema = z.object({
   modelVersion: z.string().min(1).max(40),
   config: z.record(z.string(), z.unknown()).default({}),
   creatorSignature: z.string().max(200).optional(),
+  /// Public source repository. Resolved to a commit SHA once, at registration,
+  /// because a bare URL points at a moving target.
+  repositoryUrl: z.string().min(4).max(200).optional(),
+  /// Branch, tag or SHA to pin. Defaults to the repository's HEAD.
+  repositoryRef: z.string().min(1).max(120).optional(),
 });
 
 export const createDecisionSchema = z

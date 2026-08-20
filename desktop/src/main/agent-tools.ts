@@ -10,6 +10,7 @@
 
 import { commitDecision, listAgents, listDecisions } from "./merit";
 import { getVenueAdapter } from "./venues";
+import { snapshot as rwaSnapshot } from "./rwa";
 
 export const SYSTEM = `You are the operator agent inside the MERIT Protocol console.
 
@@ -27,6 +28,13 @@ When you propose a decision, state the asset, action, price, quantity and your
 confidence, and say plainly what would make the call wrong. Put your reasoning
 in the metadata field: it is sealed into the commitment alongside the numbers,
 so it cannot be revised after the outcome is known.
+
+The console also tracks tokenized real-world assets — treasuries, private credit
+and gold — read directly from Ethereum. Two things follow. Cite the block a
+figure was read at, because an RWA number an operator cannot reproduce is worth
+nothing here. And where no dollar value could be read on chain, say that plainly
+instead of supplying one from memory: the supply is real, the valuation is not
+yours to invent.
 
 ABSTAIN is a real answer. If conditions are unclear, say so and record the
 abstention rather than manufacturing an opinion — an agent that only records its
@@ -129,6 +137,42 @@ export function toolSpecs(events: AgentEvents): ToolSpec[] {
               ? undefined
               : "No venue adapter is connected, so live position data is unavailable. Report only what MERIT has recorded; do not estimate venue state.",
           },
+        });
+      },
+    },
+
+    {
+      name: "list_rwa_assets",
+      description:
+        "Read the tokenized real-world assets the console tracks — treasuries, private credit and gold — live from Ethereum. Returns supply for every instrument and a dollar value only where one is derivable on chain, plus the block the read was taken at. Call this before discussing an RWA instrument, and cite the block: these are figures the operator can reproduce, which is the only kind this console trades on.",
+      parameters: {
+        type: "object",
+        properties: {
+          assetClass: {
+            type: "string",
+            enum: ["treasury", "credit", "commodity"],
+            description: "Restrict to one class. Omit for all of them.",
+          },
+        },
+        additionalProperties: false,
+      },
+      run: async (input: unknown): Promise<string> => {
+        events.onToolStart("list_rwa_assets");
+        const snapshot = await rwaSnapshot();
+        const wanted = (input as { assetClass?: string }).assetClass;
+
+        return JSON.stringify({
+          chain: snapshot.chain,
+          block: snapshot.block,
+          readAt: snapshot.readAt,
+          source: snapshot.source,
+          gold: snapshot.gold,
+          instruments: snapshot.instruments.filter(
+            (instrument) => !wanted || instrument.assetClass === wanted,
+          ),
+          note:
+            "A null value means no dollar figure could be read on chain for that instrument — " +
+            "its NAV is published off chain. Say so rather than estimating one.",
         });
       },
     },

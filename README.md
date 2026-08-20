@@ -288,6 +288,42 @@ visitor arrives.
 
 ---
 
+## Source provenance
+
+A strategy version may declare a public repository. The URL is resolved **once**,
+at registration, to a full commit SHA — a bare URL points at a moving target, and
+tomorrow's push would silently change what yesterday's decision was made under.
+A commit SHA hashes the whole tree, so the content behind it cannot change
+without the SHA changing.
+
+```bash
+curl -X POST $BASE/api/v1/strategies -H "Authorization: Bearer $KEY" \
+  -d '{"strategyId":"…","version":"1.0.0","description":"…",
+       "model":"claude-opus-5","modelVersion":"1",
+       "repositoryUrl":"https://github.com/owner/name",
+       "repositoryRef":"v1.0.0"}'
+```
+
+`/api/cron/provenance` re-scans daily and appends the result, which is how a
+repository deleted or made private after a bad month becomes a recorded event
+rather than a silent disappearance. Read it from
+`GET /api/v1/provenance/:versionId` (public; `?history=1` for the full trail).
+
+`GITHUB_TOKEN` is optional but worth setting: unauthenticated the API allows 60
+requests an hour and each version costs two, so a run without it caps itself at
+20 versions rather than burning the budget and marking the rest `UNREACHABLE` —
+which would read as evidence against agents who did nothing wrong.
+
+**What a passing scan establishes:** the named repository is publicly readable
+and still contains the pinned commit.
+
+**What it does not:** that the agent ran that code. An operator can link an
+immaculate repository and run something else. Disclosure is not attestation.
+Nothing in a scan is an input to the MERIT Score — popularity is purchasable,
+and a purchasable input is what the scoring invariant exists to exclude.
+
+---
+
 ## Demo data
 
 `npm run db:seed` loads five agents — Alpha Momentum, Delta Arbitrage, Nova Mean
@@ -325,6 +361,11 @@ Implemented through the reputation and qualification layer. The capital network
 is a roadmap item and deliberately last — allocating against an unproven
 reputation system would invert the order this protocol argues for. **MERIT is
 non-custodial and holds no user funds.**
+
+What remains, in the order it has to happen and gated by a definition of done
+rather than a date, is in [`ROADMAP.md`](ROADMAP.md). The protocol-facing phases
+are also published at `/docs/roadmap`; the repository file additionally carries
+Phase 0, which is housekeeping nobody outside this tree needs to read.
 
 ---
 

@@ -330,6 +330,9 @@
           <button class="nav-item" data-panel="perps" data-icon="perps" data-icon-size="15">
             <span>Perps</span>
           </button>
+          <button class="nav-item" data-panel="rwa" data-icon="rwa" data-icon-size="15">
+            <span>RWA</span>
+          </button>
           <button class="nav-item" data-panel="lp" data-icon="lp" data-icon-size="15">
             <span>Liquidity</span>
           </button>
@@ -362,38 +365,34 @@
         </section>
 
         <!-- Chat -->
-        <section class="panel" data-panel="chat">
-          <header class="panel-head is-chat">
-            <div>
+        <section class="panel is-chat-panel" data-panel="chat">
+          <div class="chat-glow" aria-hidden="true"></div>
+
+          <header class="chat-bar">
+            <div class="chat-bar-title">
               <h1>Chat</h1>
-              <p>Every decision is sealed on MERIT before you execute it.</p>
+              <p>Sealed on MERIT before you execute.</p>
             </div>
-            <button class="ghost" id="new-chat" type="button" data-icon="plus" data-icon-size="14">
-              <span>New conversation</span>
-            </button>
+            <div class="chat-bar-tools">
+              <!-- Filled by the renderer: provider, model and whether a key is held. -->
+              <button
+                class="model-chip"
+                id="model-chip"
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded="false"
+              ></button>
+              <button class="ghost is-icon" id="new-chat" type="button"
+                      title="New conversation" aria-label="New conversation"
+                      data-icon="plus" data-icon-size="15"></button>
+            </div>
           </header>
 
-          <div class="transcript" id="transcript">
-            <div class="welcome" id="welcome">
-              <h2>Think a call through.</h2>
-              <p>
-                When you want it on the record, the agent seals it as a commitment. You approve
-                first, and you execute afterwards in your own wallet — the protocol never touches
-                your funds.
-              </p>
-              <div class="suggestions" id="suggestions">
-                <button type="button" data-fill="Which agents are registered, and what are they trading?" data-icon-end="next" data-icon-size="13">
-                  <span>Which agents are registered?</span>
-                </button>
-                <button type="button" data-fill="What exposure is currently open and unsettled?" data-icon-end="next" data-icon-size="13">
-                  <span>What is open right now?</span>
-                </button>
-                <button type="button" data-fill="Walk me through committing an ETH call before I execute it." data-icon-end="next" data-icon-size="13">
-                  <span>Commit an ETH call</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <div class="transcript" id="transcript"></div>
+
+          <button class="scroll-end" id="scroll-end" type="button" hidden
+                  aria-label="Jump to the latest message"
+                  data-icon="latest" data-icon-size="14"></button>
 
           <div id="approvals"></div>
 
@@ -404,18 +403,46 @@
                 rows="1"
                 placeholder="Ask about an agent, review open exposure, or think through a call…"
               ></textarea>
-              <button
-                type="submit"
-                id="send"
-                aria-label="Send"
-                data-icon="send"
-                data-icon-size="15"
-              ></button>
+              <div class="composer-foot">
+                <button class="composer-model" id="composer-model" type="button"
+                        aria-haspopup="dialog"></button>
+                <span class="composer-keys">
+                  <kbd>↵</kbd> send · <kbd>⇧</kbd><kbd>↵</kbd> newline
+                </span>
+                <button
+                  type="submit"
+                  id="send"
+                  aria-label="Send"
+                  data-icon="send"
+                  data-icon-size="15"
+                ></button>
+              </div>
             </div>
-            <p class="composer-hint">
-              <kbd>Enter</kbd> to send · <kbd>Shift</kbd><kbd>Enter</kbd> for a new line
-            </p>
           </form>
+
+          <!--
+            Model setup, in the panel that uses it. The key never comes back out
+            of the main process — this only ever posts one in, and reads back
+            whether one is held.
+          -->
+          <div class="model-sheet" id="model-sheet" hidden>
+            <div class="model-scrim" id="model-scrim"></div>
+            <div class="model-panel" role="dialog" aria-modal="true" aria-labelledby="model-panel-title">
+              <header class="model-panel-head">
+                <div>
+                  <h2 id="model-panel-title">Chat model</h2>
+                  <p>It proposes, you approve, MERIT records — whichever provider runs it.</p>
+                </div>
+                <button class="icon-btn" id="model-close" type="button" aria-label="Close"
+                        data-icon="close" data-icon-size="15"></button>
+              </header>
+
+              <!-- The controls themselves are built by the renderer: Settings
+                   mounts the same component, and one implementation cannot
+                   drift from the other. -->
+              <div id="model-sheet-mount"></div>
+            </div>
+          </div>
         </section>
 
         <!-- Agents -->
@@ -429,7 +456,7 @@
 
         <!-- Perps -->
         <section class="panel" data-panel="perps">
-          <header class="panel-head is-chat">
+          <header class="panel-head is-split">
             <div>
               <h1>Perps</h1>
             </div>
@@ -456,6 +483,33 @@
             </aside>
             <div class="market-view" id="market-view">
               <div class="empty"><p>Loading markets…</p></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RWA -->
+        <section class="panel" data-panel="rwa">
+          <header class="panel-head is-split">
+            <div>
+              <h1>Real-world assets</h1>
+              <p>
+                Tokenized treasuries, credit and commodities — every figure read from
+                Ethereum, at a block you can check.
+              </p>
+            </div>
+            <button class="ghost" id="rwa-refresh" type="button"
+                    data-icon="refresh" data-icon-size="14">
+              <span>Refresh</span>
+            </button>
+          </header>
+
+          <div class="rwa">
+            <aside class="rwa-rail">
+              <div class="rwa-classes" id="rwa-classes"></div>
+              <div class="rwa-rows" id="rwa-rows"></div>
+            </aside>
+            <div class="rwa-view" id="rwa-view">
+              <div class="empty"><p>Reading the chain…</p></div>
             </div>
           </div>
         </section>

@@ -16,6 +16,8 @@ import {
 import { TierBadge } from "@/components/merit/agent-card";
 import { AnchorBadge, StatusBadge } from "@/components/merit/verification-report";
 import { DbNotice } from "@/components/merit/db-notice";
+import { ProvenancePanel, type ProvenanceEntry } from "@/components/merit/provenance-panel";
+import { latestScan } from "@/lib/services/provenance";
 import { getPrisma } from "@/lib/db";
 import { safeQuery } from "@/lib/services/queries";
 import { TIER_REQUIREMENTS, qualify } from "@/lib/qualification/tiers";
@@ -83,7 +85,18 @@ async function loadProfile(agentId: string) {
     }),
   ]);
 
-  return { agent, record, decisions, events, latestBatch };
+  const provenance: ProvenanceEntry[] = await Promise.all(
+    agent.strategies.flatMap((strategy) =>
+      strategy.versions.map(async (version) => ({
+        versionId: version.id,
+        version: version.version,
+        declared: Boolean(version.repositoryUrl),
+        scan: version.repositoryUrl ? await latestScan(prisma, version.id) : null,
+      })),
+    ),
+  );
+
+  return { agent, record, decisions, events, latestBatch, provenance };
 }
 
 export default async function AgentProfilePage({
@@ -101,7 +114,7 @@ export default async function AgentProfilePage({
   }
   if (!data) notFound();
 
-  const { agent, record, decisions, events, latestBatch } = data;
+  const { agent, record, decisions, events, latestBatch, provenance } = data;
 
   const {
     metrics,
@@ -376,6 +389,8 @@ export default async function AgentProfilePage({
             </tbody>
           </Table>
         </Panel>
+
+        <ProvenancePanel entries={provenance} />
       </section>
 
       {/* ---------------------------------------------------------- history -- */}

@@ -19,6 +19,8 @@
  *    market to show.
  */
 
+import { inlineImage, mapLimited } from "./logos";
+
 const BASE = "https://api.hyperliquid.xyz/info";
 
 /** The venue's own interval strings, so no translation table is needed. */
@@ -291,25 +293,6 @@ export interface MarketPulse {
   spark: number[];
 }
 
-/** Run with a small concurrency cap so N sparklines do not open N sockets. */
-async function mapLimited<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = [];
-  let cursor = 0;
-
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (cursor < items.length) {
-      const index = cursor++;
-      results[index] = await fn(items[index]);
-    }
-  });
-
-  await Promise.all(workers);
-  return results;
-}
 
 /**
  * A day of context for every market shown.
@@ -363,39 +346,19 @@ export const overview = cached(60_000, loadOverview);
 /* ------------------------------------------------------------------ logos -- */
 
 /**
- * Asset icons, inlined as data URIs.
+ * Asset icons.
  *
  * Hyperliquid publishes no icon in its API; these come from the same path its
  * own front end uses, which is undocumented and may move. That is survivable:
  * a miss returns nothing and the row falls back to the symbol's initials, so
- * the market list never depends on this working.
- *
- * They are fetched here and passed to the renderer as data URIs because the
- * renderer's CSP forbids it any network request of its own. Rendering
- * third-party SVG is only safe because an <img> loads SVG in secure static
- * mode: no scripts, no external references. Never inline these into the DOM as
- * markup.
+ * the market list never depends on this working. The fetch itself, and the
+ * guards on it, live in logos.ts.
  */
 const ICON_BASE = "https://app.hyperliquid.xyz/coins";
-const MAX_LOGO_BYTES = 96 * 1024;
 let logoCache: Record<string, string> | null = null;
 
-async function fetchLogo(symbol: string): Promise<string | null> {
-  try {
-    const response = await fetch(`${ICON_BASE}/${encodeURIComponent(symbol)}.svg`);
-    if (!response.ok) return null;
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.byteLength > MAX_LOGO_BYTES) return null;
-
-    const type = response.headers.get("content-type")?.split(";")[0] ?? "image/svg+xml";
-    if (!type.startsWith("image/")) return null;
-
-    return `data:${type};base64,${buffer.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
+const fetchLogo = (symbol: string) =>
+  inlineImage(`${ICON_BASE}/${encodeURIComponent(symbol)}.svg`);
 
 export async function logos(): Promise<Record<string, string>> {
   if (logoCache) return logoCache;

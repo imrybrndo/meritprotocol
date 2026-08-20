@@ -25,6 +25,10 @@ export const config: VercelConfig = {
     // Reputation is derived from sealed proofs, so it runs after sealing has
     // had a chance to land rather than racing it on the same tick.
     { path: "/api/cron/reputation", schedule: "5 * * * *" },
+    // Source repositories change far more slowly than trading records, and the
+    // unauthenticated GitHub budget is 60 requests an hour. Daily is plenty to
+    // catch a repository being withdrawn.
+    { path: "/api/cron/provenance", schedule: "20 3 * * *" },
   ],
 };
 
